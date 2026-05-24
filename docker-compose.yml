@@ -1,0 +1,65 @@
+services:
+
+  bot:
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+    container_name: briefing-bot
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - briefing-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      webserver:
+        condition: service_started
+    networks:
+      - llm-shared
+      - internal
+
+  runner:
+    build:
+      context: .
+      dockerfile: runner/Dockerfile
+    container_name: briefing-runner
+    restart: "no"
+    env_file: .env
+    volumes:
+      - briefing-data:/data
+    networks:
+      - internal
+
+  admin:
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
+    container_name: briefing-admin
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - briefing-data:/data
+    networks:
+      - internal
+
+  webserver:
+    image: nginx:alpine
+    container_name: briefing-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-3300}:80"
+    volumes:
+      - briefing-data:/usr/share/nginx/html:ro
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - internal
+
+volumes:
+  briefing-data:
+    name: briefing-data
+
+networks:
+  llm-shared:
+    external: true
+    name: llm-shared
+  internal:
+    driver: bridge

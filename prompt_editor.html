@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Briefing — Prompt Editor</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f8f9fa;--surface:#fff;--border:#e0e4ea;--border2:#c8cdd6;
+  --text:#1a1d23;--muted:#6b7280;--accent:#3b5bdb;--accent-bg:#eef1ff;
+  --success:#2b9348;--success-bg:#edfaf1;--warn:#b45309;--warn-bg:#fff8ed;
+  --danger:#c0392b;--danger-bg:#fff0ef;--mono:'JetBrains Mono',Menlo,monospace;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+
+/* Sidebar */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);
+  padding:1.25rem 0;display:flex;flex-direction:column;gap:2px}
+.sidebar-title{padding:0 1rem 0.75rem;font-size:11px;font-weight:600;
+  color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.nav-item{padding:0.5rem 1rem;cursor:pointer;border-radius:0;
+  font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;
+  border-left:2px solid transparent;transition:all .15s}
+.nav-item:hover{background:var(--bg);color:var(--text)}
+.nav-item.active{background:var(--accent-bg);color:var(--accent);
+  border-left-color:var(--accent);font-weight:500}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.5}
+.sidebar-sep{margin:0.5rem 1rem;border:none;border-top:1px solid var(--border)}
+
+/* Main */
+.main{padding:2rem;max-width:900px}
+.section{display:none}.section.active{display:block}
+h1{font-size:18px;font-weight:600;margin-bottom:0.25rem}
+.subtitle{color:var(--muted);font-size:13px;margin-bottom:1.5rem}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:1.25rem;margin-bottom:1rem}
+.card-header{display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:0.75rem}
+.card-title{font-size:12px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--muted)}
+.badge{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500}
+.badge-blue{background:var(--accent-bg);color:var(--accent)}
+.badge-warn{background:var(--warn-bg);color:var(--warn)}
+.badge-green{background:var(--success-bg);color:var(--success)}
+.hint{font-size:12px;color:var(--muted);margin-bottom:0.75rem;line-height:1.5}
+
+/* Pill buttons */
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:0.75rem}
+.pill{font-size:11px;font-family:var(--mono);padding:3px 9px;border-radius:4px;
+  border:1px solid var(--border);color:var(--muted);cursor:pointer;
+  background:var(--bg);transition:all .12s}
+.pill:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+
+/* Textarea */
+textarea{width:100%;font-size:12.5px;font-family:var(--mono);line-height:1.65;
+  color:var(--text);background:var(--bg);border:1px solid var(--border);
+  border-radius:6px;padding:10px 12px;resize:vertical;min-height:160px;
+  transition:border .15s}
+textarea:focus{outline:none;border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(59,91,219,.08)}
+input[type=text]{width:100%;font-size:13px;color:var(--text);
+  background:var(--bg);border:1px solid var(--border);border-radius:6px;
+  padding:7px 11px;height:36px;transition:border .15s}
+input[type=text]:focus{outline:none;border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(59,91,219,.08)}
+select{font-size:13px;padding:5px 10px;border:1px solid var(--border);
+  border-radius:6px;background:var(--bg);color:var(--text);height:34px}
+select:focus{outline:none;border-color:var(--accent)}
+
+/* Buttons */
+.btn-row{display:flex;align-items:center;justify-content:space-between;
+  margin-top:0.75rem;gap:8px}
+.btn-row-left{display:flex;gap:6px}
+button{font-size:13px;padding:6px 14px;border-radius:6px;cursor:pointer;
+  border:1px solid var(--border);background:var(--surface);color:var(--text);
+  transition:all .12s;font-weight:500}
+button:hover{background:var(--bg)}
+button:active{transform:scale(.98)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:#2f4ccd;border-color:#2f4ccd}
+.btn-danger{background:var(--danger-bg);color:var(--danger);border-color:#f5c0bb}
+.btn-danger:hover{background:#ffe4e1}
+.save-ok{font-size:12px;color:var(--success);display:none;margin-left:8px}
+
+/* Output areas */
+.output{background:var(--bg);border:1px solid var(--border);border-radius:6px;
+  padding:10px 12px;font-size:12.5px;font-family:var(--mono);
+  color:var(--text);line-height:1.65;min-height:52px;
+  white-space:pre-wrap;word-break:break-all;max-height:220px;overflow-y:auto}
+.output.muted{color:var(--muted);font-style:italic}
+.interp{font-size:12px;color:var(--muted);margin-top:0.5rem;
+  padding:6px 10px;background:var(--bg);border-radius:6px;
+  border-left:3px solid var(--border2)}
+.interp.ok{border-left-color:var(--success);color:var(--success)}
+.interp.err{border-left-color:var(--danger);color:var(--danger)}
+.interp.warn{border-left-color:var(--warn);color:var(--warn)}
+
+/* Metrics */
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:1rem}
+.metric{background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px}
+.metric-label{font-size:11px;color:var(--muted);margin-bottom:3px}
+.metric-val{font-size:17px;font-weight:600;color:var(--text)}
+
+/* Variables section */
+.var-group{margin-bottom:1rem}
+.var-label{font-size:11px;font-weight:600;font-family:var(--mono);
+  color:var(--accent);margin-bottom:4px;display:block}
+
+/* Status bar */
+.status-bar{display:flex;align-items:center;gap:10px;
+  font-size:12px;color:var(--muted);margin-bottom:1rem}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--border2)}
+.dot.green{background:var(--success)}
+.dot.red{background:var(--danger)}
+.dot.spin{border:2px solid var(--border);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.sep{border:none;border-top:1px solid var(--border);margin:1rem 0}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-title">Prompt Editor</div>
+  <div class="nav-item active" onclick="show('parser')">
+    <span class="nav-dot"></span>Request parser
+  </div>
+  <div class="nav-item" onclick="show('clarify')">
+    <span class="nav-dot"></span>Clarification
+  </div>
+  <div class="nav-item" onclick="show('parse-reply')">
+    <span class="nav-dot"></span>Reply parser
+  </div>
+  <hr class="sidebar-sep"/>
+  <div class="nav-item" onclick="show('test')">
+    <span class="nav-dot"></span>Test console
+  </div>
+  <div class="nav-item" onclick="show('vars')">
+    <span class="nav-dot"></span>Variables
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="main">
+
+<!-- ── REQUEST PARSER ── -->
+<div id="sec-parser" class="section active">
+  <h1>Request parser</h1>
+  <p class="subtitle">Converts natural language into a CLI command or MISSING_* signals.</p>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">System prompt</span>
+      <span class="badge badge-blue">LLM job 1</span>
+    </div>
+    <p class="hint">Variables in <code>{{double braces}}</code> are injected at runtime. Click a pill to insert at cursor.</p>
+    <div class="pills">
+      <span class="pill" onclick="ins('p-parser','{{cli_schema}}')">{{cli_schema}}</span>
+      <span class="pill" onclick="ins('p-parser','{{known_passengers}}')">{{known_passengers}}</span>
+      <span class="pill" onclick="ins('p-parser','{{known_airports}}')">{{known_airports}}</span>
+      <span class="pill" onclick="ins('p-parser','{{current_date}}')">{{current_date}}</span>
+    </div>
+    <textarea id="p-parser" rows="14"></textarea>
+    <div class="btn-row">
+      <div class="btn-row-left">
+        <button onclick="resetPrompt('parser')">Reset</button>
+        <button onclick="copyTA('p-parser')">Copy</button>
+      </div>
+      <div style="display:flex;align-items:center">
+        <span class="save-ok" id="save-ok-parser">Saved</span>
+        <button class="btn-primary" onclick="savePrompt('parser','p-parser')">Save to prompts.json</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CLARIFICATION ── -->
+<div id="sec-clarify" class="section">
+  <h1>Clarification</h1>
+  <p class="subtitle">Two prompts: one generates the question, one parses the answer.</p>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Clarification asker</span>
+      <span class="badge badge-warn">LLM job 2</span>
+    </div>
+    <p class="hint">Called when airports or passengers are missing. Generates a plain-text Telegram message.</p>
+    <div class="pills">
+      <span class="pill" onclick="ins('p-clarify','{{original_request}}')">{{original_request}}</span>
+      <span class="pill" onclick="ins('p-clarify','{{missing_airports}}')">{{missing_airports}}</span>
+      <span class="pill" onclick="ins('p-clarify','{{missing_passengers}}')">{{missing_passengers}}</span>
+    </div>
+    <textarea id="p-clarify" rows="12"></textarea>
+    <div class="btn-row">
+      <div class="btn-row-left">
+        <button onclick="resetPrompt('clarify')">Reset</button>
+        <button onclick="copyTA('p-clarify')">Copy</button>
+      </div>
+      <div style="display:flex;align-items:center">
+        <span class="save-ok" id="save-ok-clarify">Saved</span>
+        <button class="btn-primary" onclick="savePrompt('clarify','p-clarify')">Save to prompts.json</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── REPLY PARSER ── -->
+<div id="sec-parse-reply" class="section">
+  <h1>Reply parser</h1>
+  <p class="subtitle">Converts your freeform Telegram reply into structured JSON for DB insertion.</p>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Reply parser prompt</span>
+      <span class="badge badge-warn">LLM job 3</span>
+    </div>
+    <p class="hint">Output must be valid JSON only — no markdown, no explanation.</p>
+    <textarea id="p-parse-reply" rows="12"></textarea>
+    <div class="btn-row">
+      <div class="btn-row-left">
+        <button onclick="resetPrompt('parse_reply')">Reset</button>
+        <button onclick="copyTA('p-parse-reply')">Copy</button>
+      </div>
+      <div style="display:flex;align-items:center">
+        <span class="save-ok" id="save-ok-parse_reply">Saved</span>
+        <button class="btn-primary" onclick="savePrompt('parse_reply','p-parse-reply')">Save to prompts.json</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TEST CONSOLE ── -->
+<div id="sec-test" class="section">
+  <h1>Test console</h1>
+  <p class="subtitle">Send a message to Mistral and inspect the raw output.</p>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Connection</span></div>
+    <div class="status-bar">
+      <span class="dot" id="conn-dot"></span>
+      <span id="conn-label">Checking Ollama…</span>
+      <button onclick="checkConn()" style="margin-left:auto">Refresh</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Input</span></div>
+    <input type="text" id="test-input" placeholder="e.g. Briefing EDFE to EDFM with Eric 10kg 3 hours"
+      value="Briefing EDFE to EDFM with Eric 10kg 3 hours"/>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:0.6rem">
+      <label style="font-size:13px;color:var(--muted)">Prompt:</label>
+      <select id="test-sel">
+        <option value="parser">Request parser</option>
+        <option value="clarify">Clarification asker</option>
+        <option value="parse_reply">Reply parser</option>
+      </select>
+      <button class="btn-primary" id="run-btn" onclick="runTest()" style="margin-left:auto">
+        Run test
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Rendered prompt</span>
+      <span class="badge badge-blue" id="rendered-badge">parser</span>
+    </div>
+    <div class="output muted" id="rendered-prompt">Run a test to see the prompt with variables injected.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Mistral output</span>
+      <span class="badge" id="status-badge" style="background:var(--bg);color:var(--muted)">idle</span>
+    </div>
+    <div class="output" id="test-output">—</div>
+    <div class="interp" id="interpretation">—</div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Latency</div><div class="metric-val" id="m-lat">—</div></div>
+      <div class="metric"><div class="metric-label">Tokens</div><div class="metric-val" id="m-tok">—</div></div>
+      <div class="metric"><div class="metric-label">Result</div><div class="metric-val" id="m-res">—</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── VARIABLES ── -->
+<div id="sec-vars" class="section">
+  <h1>Runtime variables</h1>
+  <p class="subtitle">Edit to simulate different DB states for testing without touching the real DB.</p>
+
+  <div class="card">
+    <div class="var-group">
+      <span class="var-label">{{cli_schema}}</span>
+      <textarea id="v-schema" rows="5"></textarea>
+    </div>
+    <hr class="sep"/>
+    <div class="var-group">
+      <span class="var-label">{{known_passengers}}</span>
+      <textarea id="v-passengers" rows="5"></textarea>
+    </div>
+    <hr class="sep"/>
+    <div class="var-group">
+      <span class="var-label">{{known_airports}}</span>
+      <textarea id="v-airports" rows="5"></textarea>
+    </div>
+    <div class="btn-row">
+      <div></div>
+      <button onclick="saveVars()">Save variables</button>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+const OLLAMA = 'http://localhost:11434';
+const PROMPTS_KEY = 'briefing_prompts';
+const VARS_KEY    = 'briefing_vars';
+
+const DEFAULTS = {
+  parser: `You are a flight briefing CLI parser. Your only output is a single shell command or structured signals — nothing else, no explanation, no markdown, no preamble.
+
+The CLI schema is:
+{{cli_schema}}
+
+Known passengers in the database (name:weight_kg:height_cm):
+{{known_passengers}}
+
+Known airports in the database (ICAO:elevation_ft):
+{{known_airports}}
+
+Rules:
+- Extract ICAO codes (uppercase, 4 letters). First = departure, subsequent = stopovers/destination.
+- If flight type is not stated: one airport = pattern, two or more airports = cross-country.
+- Convert flight duration to decimal hours (e.g. '2h30' = 2.5, '1 hour' = 1.0, '90min' = 1.5).
+- Match passenger names case-insensitively to known passengers. Use stored weight:height.
+- 'no passenger', 'solo', 'alone', 'no pax' → add --no-pax flag.
+- Always add --yes to skip interactive confirmations.
+- If a named passenger is NOT in the known passengers list, output on its own line: MISSING_PAX:<n>
+- If an airport ICAO is NOT in the known airports list, output on its own line: MISSING_AIRPORT:<ICAO>
+- If multiple things are missing, list each on a separate line, then stop.
+- Never invent weights, heights, or elevations.
+- If the request is ambiguous, output: CLARIFY:<your question>`,
+
+  clarify: `You are a flight briefing assistant communicating via Telegram. Be concise and friendly. Plain text only — no markdown, no asterisks, no bullet symbols.
+
+The user originally requested: {{original_request}}
+
+Missing airports (need elevation + all runways for each):
+{{missing_airports}}
+
+Missing passengers (need weight in kg + height in cm for each):
+{{missing_passengers}}
+
+Ask for all missing information in a single message. Keep it under 8 lines.
+
+For each missing airport: ask elevation in feet, then for each runway: designator, surface (asphalt/grass/concrete), TORA in metres, LDA in metres.
+
+For each missing passenger: ask weight in kg and height in cm.
+
+End with a clear example: 'EDXY 450ft RWY 07 asphalt 800/750 RWY 25 asphalt 750/800'`,
+
+  parse_reply: `Parse the following user reply into JSON. Extract airport and passenger data exactly as stated.
+
+Output format (strict JSON, no extra keys, no markdown, no explanation):
+{
+  "airports": [
+    {
+      "icao": "EDXY",
+      "elevation_ft": 450,
+      "runways": [
+        {"designator": "07", "surface": "asphalt", "tora_m": 800, "lda_m": 750}
+      ]
+    }
+  ],
+  "passengers": [
+    {"name": "Alice", "weight_kg": 65, "height_cm": 170}
+  ]
+}
+
+Rules:
+- If a field is missing or ambiguous, set it to null.
+- ICAO codes must be uppercase 4 letters.
+- Surface must be one of: asphalt, grass, concrete. If unclear, set to null.
+- Never invent values. Output only valid JSON.`
+};
+
+const DEFAULT_VARS = {
+  schema: `python3 flight_briefing.py [ICAO...] --time HOURS [--type pattern|local|cross-country] [--pax NAME:WEIGHT:HEIGHT] [--baggage KG] [--no-pax] [--yes]
+
+Examples:
+  flight_briefing.py EDFE --time 1.0 --type pattern --no-pax --yes
+  flight_briefing.py EDFE EDFM --time 3.0 --pax Eric:68:180 --baggage 10 --yes`,
+  passengers: `Gabi:60:165\nEric:68:180\nÉric:80:175`,
+  airports: `EDEF:436  EDEL:295  EDFA:1102  EDFB:398  EDFC:410\nEDFE:385  EDFG:413  EDFM:309  EDFO:1143  EDFU:1500\nEDFV:295  EDFX:315  EDFZ:760  EDGP:279  EDGX:346\nEDLE:424  EDRF:351  EDRY:312  LFRI:299`
+};
+
+/* ── Storage ── */
+function loadState(){
+  const p = JSON.parse(localStorage.getItem(PROMPTS_KEY)||'{}');
+  const v = JSON.parse(localStorage.getItem(VARS_KEY)||'{}');
+  document.getElementById('p-parser').value      = p.parser      || DEFAULTS.parser;
+  document.getElementById('p-clarify').value     = p.clarify     || DEFAULTS.clarify;
+  document.getElementById('p-parse-reply').value = p.parse_reply || DEFAULTS.parse_reply;
+  document.getElementById('v-schema').value      = v.schema      || DEFAULT_VARS.schema;
+  document.getElementById('v-passengers').value  = v.passengers  || DEFAULT_VARS.passengers;
+  document.getElementById('v-airports').value    = v.airports    || DEFAULT_VARS.airports;
+}
+
+function savePrompt(key, taId){
+  const p = JSON.parse(localStorage.getItem(PROMPTS_KEY)||'{}');
+  p[key] = document.getElementById(taId).value;
+  localStorage.setItem(PROMPTS_KEY, JSON.stringify(p));
+  const el = document.getElementById('save-ok-'+key);
+  if(el){ el.style.display='inline'; setTimeout(()=>el.style.display='none', 2200); }
+}
+
+function saveVars(){
+  const v = {
+    schema:     document.getElementById('v-schema').value,
+    passengers: document.getElementById('v-passengers').value,
+    airports:   document.getElementById('v-airports').value,
+  };
+  localStorage.setItem(VARS_KEY, JSON.stringify(v));
+}
+
+function resetPrompt(key){
+  const map = {parser:'p-parser', clarify:'p-clarify', parse_reply:'p-parse-reply'};
+  document.getElementById(map[key]).value = DEFAULTS[key] || '';
+}
+
+function copyTA(id){ navigator.clipboard.writeText(document.getElementById(id).value); }
+
+/* ── Nav ── */
+function show(name){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const sec = document.getElementById('sec-'+name);
+  if(sec) sec.classList.add('active');
+  const navIdx = {parser:0,clarify:1,'parse-reply':2,test:3,vars:4}[name];
+  const items = document.querySelectorAll('.nav-item');
+  if(items[navIdx]) items[navIdx].classList.add('active');
+}
+
+/* ── Pill insert ── */
+function ins(id, token){
+  const ta = document.getElementById(id);
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  ta.value = ta.value.slice(0,s)+token+ta.value.slice(e);
+  ta.selectionStart = ta.selectionEnd = s+token.length;
+  ta.focus();
+}
+
+/* ── Ollama connection check ── */
+async function checkConn(){
+  const dot = document.getElementById('conn-dot');
+  const lbl = document.getElementById('conn-label');
+  dot.className = 'dot spin'; lbl.textContent = 'Checking…';
+  try{
+    const r = await fetch(`${OLLAMA}/api/tags`,{signal:AbortSignal.timeout(4000)});
+    const d = await r.json();
+    const models = (d.models||[]).map(m=>m.name).join(', ') || 'no models loaded';
+    dot.className = 'dot green';
+    lbl.textContent = `Ollama connected — ${models}`;
+  }catch(e){
+    dot.className = 'dot red';
+    lbl.textContent = `Ollama unreachable at ${OLLAMA} — is the container running?`;
+  }
+}
+
+/* ── Render prompt ── */
+function renderPrompt(template, userMsg){
+  const v = JSON.parse(localStorage.getItem(VARS_KEY)||'{}');
+  return template
+    .replace(/\{\{cli_schema\}\}/g,        v.schema     || DEFAULT_VARS.schema)
+    .replace(/\{\{known_passengers\}\}/g,  v.passengers || DEFAULT_VARS.passengers)
+    .replace(/\{\{known_airports\}\}/g,    v.airports   || DEFAULT_VARS.airports)
+    .replace(/\{\{original_request\}\}/g,  userMsg)
+    .replace(/\{\{missing_airports\}\}/g,  '[resolved at runtime]')
+    .replace(/\{\{missing_passengers\}\}/g,'[resolved at runtime]')
+    .replace(/\{\{current_date\}\}/g,      new Date().toISOString().slice(0,10));
+}
+
+/* ── Interpretation ── */
+function interpret(output, key){
+  const o = output.trim();
+  if(key === 'parser'){
+    if(o.includes('flight_briefing.py')) return ['ok','Valid CLI command — ready to execute'];
+    if(o.startsWith('MISSING_AIRPORT:'))  return ['warn','Airport not in DB — clarification loop will trigger'];
+    if(o.startsWith('MISSING_PAX:'))      return ['warn','Passenger not in DB — clarification loop will trigger'];
+    if(o.startsWith('CLARIFY:'))          return ['warn','LLM is unsure — question will be relayed to Telegram'];
+    return ['err','Unexpected format — refine the prompt'];
+  }
+  if(key === 'parse_reply'){
+    try{ JSON.parse(o); return ['ok','Valid JSON — ready to INSERT into DB']; }
+    catch(e){ return ['err','Invalid JSON — adjust reply parser prompt']; }
+  }
+  return ['','Review output manually'];
+}
+
+function classForLevel(l){ return {ok:'ok',warn:'warn',err:'err'}[l]||''; }
+
+/* ── Test runner ── */
+async function runTest(){
+  const userMsg = document.getElementById('test-input').value.trim();
+  if(!userMsg) return;
+  const key = document.getElementById('test-sel').value;
+  const taMap = {parser:'p-parser', clarify:'p-clarify', parse_reply:'p-parse-reply'};
+  const template = document.getElementById(taMap[key]).value;
+  const rendered = renderPrompt(template, userMsg);
+
+  document.getElementById('rendered-prompt').textContent = rendered;
+  document.getElementById('rendered-prompt').className = 'output';
+  document.getElementById('rendered-badge').textContent = key;
+  document.getElementById('test-output').textContent = 'Calling Mistral…';
+  document.getElementById('interpretation').textContent = '';
+  document.getElementById('interpretation').className = 'interp';
+  document.getElementById('status-badge').textContent = 'running';
+  document.getElementById('status-badge').style.cssText='background:var(--warn-bg);color:var(--warn)';
+  document.getElementById('m-lat').textContent='…';
+  document.getElementById('m-tok').textContent='…';
+  document.getElementById('m-res').textContent='…';
+  document.getElementById('run-btn').disabled=true;
+
+  const model = 'mistral-small';
+  const t0 = Date.now();
+  try{
+    const resp = await fetch(`${OLLAMA}/api/chat`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model,
+        stream: false,
+        messages:[
+          {role:'system', content: rendered},
+          {role:'user',   content: userMsg}
+        ]
+      })
+    });
+    const lat = ((Date.now()-t0)/1000).toFixed(2)+'s';
+    const data = await resp.json();
+    const output = data.message?.content || data.error || JSON.stringify(data);
+    const tokens = (data.prompt_eval_count||0)+(data.eval_count||0);
+    const [level, msg] = interpret(output, key);
+
+    document.getElementById('test-output').textContent = output;
+    const interp = document.getElementById('interpretation');
+    interp.textContent = msg;
+    interp.className = 'interp '+(classForLevel(level));
+
+    const isOk = level==='ok';
+    document.getElementById('status-badge').textContent = isOk?'ok':'needs work';
+    document.getElementById('status-badge').style.cssText = isOk
+      ? 'background:var(--success-bg);color:var(--success)'
+      : 'background:var(--danger-bg);color:var(--danger)';
+    document.getElementById('m-lat').textContent = lat;
+    document.getElementById('m-tok').textContent = tokens||'—';
+    document.getElementById('m-res').textContent = isOk?'PASS':'FAIL';
+  }catch(e){
+    const lat = ((Date.now()-t0)/1000).toFixed(2)+'s';
+    document.getElementById('test-output').textContent =
+      `Could not reach Ollama at ${OLLAMA}\n\n${e.message}\n\nMake sure ~/.shared-llm is running.`;
+    document.getElementById('status-badge').textContent='offline';
+    document.getElementById('status-badge').style.cssText='background:var(--danger-bg);color:var(--danger)';
+    document.getElementById('m-lat').textContent=lat;
+    document.getElementById('m-res').textContent='OFFLINE';
+  }
+  document.getElementById('run-btn').disabled=false;
+}
+
+/* ── Init ── */
+loadState();
+checkConn();
+</script>
+</body>
+</html>

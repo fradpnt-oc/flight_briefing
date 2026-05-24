@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>Briefing Admin</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9C%88%EF%B8%8F%3C/text%3E%3C/svg%3E"/>
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #22263a;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.15);
+  --text: #e8eaf0;
+  --muted: #7b82a0;
+  --accent: #4f8ef7;
+  --accent2: #3d6fd4;
+  --green: #34c97a;
+  --red: #f05c5c;
+  --amber: #f0a83c;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: -apple-system, 'SF Pro Text', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* Header */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(15,17,23,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 16px 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+.header-top { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.header-icon { font-size: 22px; }
+.header-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+.header-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+/* Tabs */
+.tabs { display: flex; gap: 0; }
+.tab {
+  flex: 1; padding: 10px 4px; text-align: center;
+  font-size: 13px; font-weight: 600; color: var(--muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer; transition: all .2s; letter-spacing: .3px;
+}
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Content */
+.content { padding: 20px 16px; max-width: 600px; margin: 0 auto; }
+.section { display: none; }
+.section.active { display: block; }
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.card-header {
+  padding: 14px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+.card-title { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.card-badge {
+  font-size: 11px; font-weight: 700; padding: 2px 7px;
+  border-radius: 20px; background: var(--surface2); color: var(--muted);
+  letter-spacing: .5px; text-transform: uppercase;
+}
+.card-badge.icao { background: rgba(79,142,247,0.15); color: var(--accent); }
+.chevron { color: var(--muted); font-size: 12px; transition: transform .2s; }
+.card.open .chevron { transform: rotate(180deg); }
+.card-body { display: none; padding: 0 16px 16px; border-top: 1px solid var(--border); }
+.card.open .card-body { display: block; }
+
+/* Info row */
+.info-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+}
+.info-row:last-child { border-bottom: none; }
+.info-label { color: var(--muted); }
+.info-val { font-weight: 500; }
+
+/* Runway rows */
+.runway-row {
+  background: var(--surface2); border-radius: var(--radius-sm);
+  padding: 10px 12px; margin-top: 8px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px;
+  font-size: 13px;
+}
+.runway-row .rw-num { font-weight: 700; color: var(--accent); grid-column: 1/-1; font-size: 14px; }
+
+/* Add form */
+.add-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.form-title { font-weight: 700; font-size: 14px; margin-bottom: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 600; letter-spacing: .3px; text-transform: uppercase; }
+.field input, .field select {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: var(--radius-sm); padding: 11px 13px;
+  color: var(--text); font-size: 15px; outline: none;
+  -webkit-appearance: none; appearance: none;
+  transition: border-color .15s;
+}
+.field input:focus, .field select:focus { border-color: var(--accent); }
+.field input::placeholder { color: var(--muted); }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* Runway builder */
+.runway-builder { margin-top: 4px; }
+.runway-entry {
+  background: var(--surface2); border-radius: var(--radius-sm);
+  padding: 12px; margin-bottom: 8px;
+  border: 1px solid var(--border);
+}
+.runway-entry-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.runway-entry-title { font-weight: 600; font-size: 13px; color: var(--accent); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 11px 20px; border-radius: var(--radius-sm); border: none;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: all .15s; letter-spacing: .2px;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--accent); color: #fff; width: 100%; padding: 14px; border-radius: var(--radius-sm); font-size: 15px; }
+.btn-primary:hover { background: var(--accent2); }
+.btn-sm { padding: 7px 13px; font-size: 13px; }
+.btn-ghost { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+.btn-ghost:hover { color: var(--text); border-color: var(--border2); }
+.btn-danger { background: rgba(240,92,92,0.12); color: var(--red); border: 1px solid rgba(240,92,92,0.2); }
+.btn-danger:hover { background: rgba(240,92,92,0.2); }
+.btn-add { background: rgba(79,142,247,0.1); color: var(--accent); border: 1px solid rgba(79,142,247,0.2); }
+.btn-add:hover { background: rgba(79,142,247,0.2); }
+.btn-full { width: 100%; margin-top: 8px; }
+
+/* Section header */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.section-count { font-size: 13px; color: var(--muted); }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: calc(24px + var(--safe-bottom)); left: 50%; transform: translateX(-50%) translateY(80px);
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 30px; padding: 10px 20px;
+  font-size: 14px; font-weight: 500;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+  z-index: 999; white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.ok { color: var(--green); }
+.toast.err { color: var(--red); }
+
+/* Empty state */
+.empty { text-align: center; padding: 40px 20px; color: var(--muted); }
+.empty-icon { font-size: 36px; margin-bottom: 10px; }
+
+/* Divider */
+.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+/* Delete button in card */
+.card-actions { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <span class="header-icon">✈️</span>
+    <div>
+      <div class="header-title">Briefing Admin</div>
+      <div class="header-sub">Airports &amp; Passengers</div>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('airports')">Airports</div>
+    <div class="tab" onclick="showTab('passengers')">Passengers</div>
+  </div>
+</div>
+
+<!-- AIRPORTS -->
+<div class="content">
+<div id="sec-airports" class="section active">
+
+  <div id="airport-add" style="display:none" class="add-form">
+    <div class="form-title">Add / Edit Airport</div>
+    <div class="field">
+      <label>ICAO Code</label>
+      <input id="a-icao" type="text" placeholder="EDFE" maxlength="4"
+        style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"/>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Elevation (ft)</label>
+        <input id="a-elev" type="number" placeholder="385"/>
+      </div>
+      <div class="field">
+        <label>Name (optional)</label>
+        <input id="a-name" type="text" placeholder="Egelsbach"/>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Latitude</label>
+        <input id="a-lat" type="number" step="0.0001" placeholder="49.9597"/>
+      </div>
+      <div class="field">
+        <label>Longitude</label>
+        <input id="a-lon" type="number" step="0.0001" placeholder="8.6456"/>
+      </div>
+    </div>
+
+    <hr class="divider"/>
+    <div class="form-title">Runways</div>
+    <div id="runway-list" class="runway-builder"></div>
+    <button class="btn btn-add btn-full" onclick="addRunwayField()">+ Add Runway</button>
+    <hr class="divider"/>
+    <button class="btn btn-primary" onclick="saveAirport()">Save Airport</button>
+    <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="toggleAirportForm(false)">Cancel</button>
+  </div>
+
+  <div class="section-header">
+    <span class="section-count" id="airport-count"></span>
+    <button class="btn btn-add btn-sm" onclick="toggleAirportForm(true)">+ Add</button>
+  </div>
+
+  <div id="airport-list"></div>
+</div>
+
+<!-- PASSENGERS -->
+<div id="sec-passengers" class="section">
+
+  <div id="pax-add" style="display:none" class="add-form">
+    <div class="form-title">Add / Edit Passenger</div>
+    <div class="field">
+      <label>Name</label>
+      <input id="p-name" type="text" placeholder="Eric"/>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Weight (kg)</label>
+        <input id="p-weight" type="number" step="0.5" placeholder="68"/>
+      </div>
+      <div class="field">
+        <label>Height (cm)</label>
+        <input id="p-height" type="number" step="1" placeholder="180"/>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="savePassenger()">Save Passenger</button>
+    <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="togglePaxForm(false)">Cancel</button>
+  </div>
+
+  <div class="section-header">
+    <span class="section-count" id="pax-count"></span>
+    <button class="btn btn-add btn-sm" onclick="togglePaxForm(true)">+ Add</button>
+  </div>
+
+  <div id="pax-list"></div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '/api';
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['airports','passengers'][i] === name));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-'+name).classList.add('active');
+  if (name === 'airports') loadAirports();
+  else loadPassengers();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = type === 'ok' ? '✓ ' + msg : '✗ ' + msg;
+  el.className = 'toast show ' + type;
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── Airports ──────────────────────────────────────────────────────────────────
+let airports = [];
+
+async function loadAirports() {
+  const res = await fetch(`${API}/airports`);
+  airports = await res.json();
+  document.getElementById('airport-count').textContent = `${airports.length} airports`;
+  const el = document.getElementById('airport-list');
+  if (!airports.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🛬</div>No airports yet</div>';
+    return;
+  }
+  el.innerHTML = airports.map(a => `
+    <div class="card" id="card-${a.icao}">
+      <div class="card-header" onclick="toggleCard('${a.icao}')">
+        <div class="card-title">
+          <span class="card-badge icao">${a.icao}</span>
+          ${a.name || a.icao}
+        </div>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="card-body">
+        <div class="info-row"><span class="info-label">Elevation</span><span class="info-val">${a.elevation_ft} ft</span></div>
+        ${a.lat != null ? `<div class="info-row"><span class="info-label">Coordinates</span><span class="info-val">${a.lat?.toFixed(4)}° / ${a.lon?.toFixed(4)}°</span></div>` : ''}
+        ${a.runways.length ? `
+          <div style="margin-top:10px;font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Runways</div>
+          ${a.runways.map(r => `
+            <div class="runway-row">
+              <span class="rw-num">RWY ${r.runway}</span>
+              <span class="info-label">Surface</span><span>${r.surface}</span>
+              <span class="info-label">TORA</span><span>${r.tora} m</span>
+              <span class="info-label">LDA</span><span>${r.lda} m</span>
+            </div>`).join('')}
+        ` : '<div style="color:var(--muted);font-size:13px;margin-top:8px">No runways</div>'}
+        <div class="card-actions">
+          <button class="btn btn-ghost btn-sm" onclick="editAirport('${a.icao}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteAirport('${a.icao}')">Delete</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleCard(id) {
+  document.getElementById('card-'+id)?.classList.toggle('open');
+}
+
+function toggleAirportForm(show) {
+  document.getElementById('airport-add').style.display = show ? 'block' : 'none';
+  if (show) {
+    document.getElementById('a-icao').value = '';
+    document.getElementById('a-elev').value = '';
+    document.getElementById('a-name').value = '';
+    document.getElementById('a-lat').value = '';
+    document.getElementById('a-lon').value = '';
+    document.getElementById('runway-list').innerHTML = '';
+    addRunwayField();
+    document.getElementById('a-icao').focus();
+  }
+}
+
+function editAirport(icao) {
+  const a = airports.find(x => x.icao === icao);
+  if (!a) return;
+  toggleAirportForm(true);
+  document.getElementById('a-icao').value = a.icao;
+  document.getElementById('a-elev').value = a.elevation_ft;
+  document.getElementById('a-name').value = a.name || '';
+  document.getElementById('a-lat').value = a.lat || '';
+  document.getElementById('a-lon').value = a.lon || '';
+  document.getElementById('runway-list').innerHTML = '';
+  a.runways.forEach(r => addRunwayField(r));
+}
+
+let rwCount = 0;
+function addRunwayField(data = {}) {
+  const id = ++rwCount;
+  const div = document.createElement('div');
+  div.className = 'runway-entry';
+  div.id = 'rw-'+id;
+  div.innerHTML = `
+    <div class="runway-entry-header">
+      <span class="runway-entry-title">Runway</span>
+      <button class="btn btn-danger btn-sm" onclick="document.getElementById('rw-${id}').remove()">Remove</button>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Designator</label><input class="rw-des" type="text" placeholder="07" value="${data.runway||''}"/></div>
+      <div class="field"><label>Surface</label>
+        <select class="rw-surf">
+          <option value="asphalt" ${data.surface==='asphalt'?'selected':''}>Asphalt</option>
+          <option value="grass" ${data.surface==='grass'?'selected':''}>Grass</option>
+          <option value="concrete" ${data.surface==='concrete'?'selected':''}>Concrete</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>TORA (m)</label><input class="rw-tora" type="number" placeholder="800" value="${data.tora||''}"/></div>
+      <div class="field"><label>LDA (m)</label><input class="rw-lda" type="number" placeholder="750" value="${data.lda||''}"/></div>
+    </div>`;
+  document.getElementById('runway-list').appendChild(div);
+}
+
+async function saveAirport() {
+  const icao = document.getElementById('a-icao').value.trim().toUpperCase();
+  const elev = parseFloat(document.getElementById('a-elev').value);
+  if (!icao || icao.length !== 4 || isNaN(elev)) {
+    toast('ICAO (4 letters) and elevation required', 'err'); return;
+  }
+  const runways = [];
+  document.querySelectorAll('.runway-entry').forEach(el => {
+    const des = el.querySelector('.rw-des').value.trim();
+    const surf = el.querySelector('.rw-surf').value;
+    const tora = parseFloat(el.querySelector('.rw-tora').value);
+    const lda = parseFloat(el.querySelector('.rw-lda').value);
+    if (des && !isNaN(tora) && !isNaN(lda)) runways.push({runway:des, surface:surf, tora, lda});
+  });
+  const lat = parseFloat(document.getElementById('a-lat').value) || null;
+  const lon = parseFloat(document.getElementById('a-lon').value) || null;
+  const name = document.getElementById('a-name').value.trim() || null;
+
+  try {
+    await fetch(`${API}/airports`, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({icao, elevation_ft: elev, name, lat, lon, runways})});
+    toast(`${icao} saved`);
+    toggleAirportForm(false);
+    loadAirports();
+  } catch(e) { toast('Save failed', 'err'); }
+}
+
+async function deleteAirport(icao) {
+  if (!confirm(`Delete ${icao}?`)) return;
+  await fetch(`${API}/airports/${icao}`, {method:'DELETE'});
+  toast(`${icao} deleted`);
+  loadAirports();
+}
+
+// ── Passengers ────────────────────────────────────────────────────────────────
+let passengers = [];
+
+async function loadPassengers() {
+  const res = await fetch(`${API}/passengers`);
+  passengers = await res.json();
+  document.getElementById('pax-count').textContent = `${passengers.length} passengers`;
+  const el = document.getElementById('pax-list');
+  if (!passengers.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">👤</div>No passengers yet</div>';
+    return;
+  }
+  el.innerHTML = passengers.map(p => `
+    <div class="card" id="card-pax-${p.name}">
+      <div class="card-header" onclick="toggleCard('pax-${p.name}')">
+        <div class="card-title">👤 ${p.name}</div>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="card-body">
+        <div class="info-row"><span class="info-label">Weight</span><span class="info-val">${p.weight} kg</span></div>
+        <div class="info-row"><span class="info-label">Height</span><span class="info-val">${p.height} cm</span></div>
+        <div class="card-actions">
+          <button class="btn btn-ghost btn-sm" onclick="editPassenger('${p.name}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deletePassenger('${p.name}')">Delete</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function togglePaxForm(show) {
+  document.getElementById('pax-add').style.display = show ? 'block' : 'none';
+  if (show) {
+    document.getElementById('p-name').value = '';
+    document.getElementById('p-weight').value = '';
+    document.getElementById('p-height').value = '';
+    document.getElementById('p-name').focus();
+  }
+}
+
+function editPassenger(name) {
+  const p = passengers.find(x => x.name === name);
+  if (!p) return;
+  togglePaxForm(true);
+  document.getElementById('p-name').value = p.name;
+  document.getElementById('p-weight').value = p.weight;
+  document.getElementById('p-height').value = p.height;
+}
+
+async function savePassenger() {
+  const name = document.getElementById('p-name').value.trim();
+  const weight = parseFloat(document.getElementById('p-weight').value);
+  const height = parseFloat(document.getElementById('p-height').value);
+  if (!name || isNaN(weight) || isNaN(height)) {
+    toast('All fields required', 'err'); return;
+  }
+  try {
+    await fetch(`${API}/passengers`, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name, weight, height})});
+    toast(`${name} saved`);
+    togglePaxForm(false);
+    loadPassengers();
+  } catch(e) { toast('Save failed', 'err'); }
+}
+
+async function deletePassenger(name) {
+  if (!confirm(`Delete ${name}?`)) return;
+  await fetch(`${API}/passengers/${name}`, {method:'DELETE'});
+  toast(`${name} deleted`);
+  loadPassengers();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadAirports();
+</script>
+</body>
+</html>
