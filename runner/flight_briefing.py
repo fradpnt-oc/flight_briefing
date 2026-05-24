@@ -116,9 +116,9 @@ AIRCRAFT_TYPES: Dict[str, AircraftConfig] = {
         cg_line_min=0.427,
         cg_line_max=0.515,
     ),
-    "cavalon_912_914": AircraftConfig(
-        code="cavalon_912_914",
-        name="AutoGyro Cavalon 912/914",
+    "cavalon_914": AircraftConfig(
+        code="cavalon_914",
+        name="AutoGyro Cavalon 914",
         empty_weight=290.0,
         empty_lever=0.0,
         fuel_start_roll=3.0,
@@ -1138,9 +1138,11 @@ def collect_inputs_from_args(args: argparse.Namespace, conn: sqlite3.Connection,
     elif getattr(args, 'no_pax', False):
         print("  No passengers (--no-pax).")
     else:
-        # Use all stored passengers silently
+        # Use all stored passengers silently (excluding pilot override)
         rows = conn.execute("SELECT name, weight, height FROM passengers").fetchall()
         for name_p, weight_p, height_p in rows:
+            if name_p.lower() == pilot_override_lower:
+                continue  # this person is flying as pilot, not passenger
             passengers.append(Passenger(name=name_p, weight=float(weight_p), height=float(height_p)))
         if passengers:
             print(f"  Using {len(passengers)} stored passenger(s): {', '.join(p.name for p in passengers)}")
@@ -1160,6 +1162,19 @@ def collect_inputs_from_args(args: argparse.Namespace, conn: sqlite3.Connection,
         raise SystemExit(1)
     pilot_name, pilot_height, pilot_weight = row
     print(f"  Pilot: {pilot_name} ({pilot_height:.0f} cm, {pilot_weight:.0f} kg)")
+
+    # Pilot override: look up from passengers table
+    pilot_override_lower = (getattr(args, "pilot", None) or "").strip().lower()
+    if pilot_override_lower:
+        pax_row = conn.execute(
+            "SELECT name, weight, height FROM passengers WHERE LOWER(name) = ?",
+            (pilot_override_lower,),
+        ).fetchone()
+        if not pax_row:
+            print(f"⚠  Pilot override '{args.pilot}' not found in passengers table.")
+            raise SystemExit(1)
+        pilot_name, pilot_weight, pilot_height = pax_row[0], float(pax_row[1]), float(pax_row[2])
+        print(f"  Pilot (override): {pilot_name} ({pilot_height:.0f} cm, {pilot_weight:.0f} kg)")
 
     total_time = float(args.time) if args.time else _prompt_time()
 
@@ -1587,6 +1602,8 @@ def _build_arg_parser() -> argparse.ArgumentParser:
                    help="Auto-confirm all stored data (pilot, airports, passengers).")
     p.add_argument("--no-pax", action="store_true",
                    help="Fly solo — ignore all stored passengers.")
+    p.add_argument("--pilot", metavar="NAME", default=None,
+                   help="Pilot override: use this person (must be in passengers table) instead of the stored pilot.")
     return p
 
 

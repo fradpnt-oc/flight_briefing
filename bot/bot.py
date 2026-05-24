@@ -43,7 +43,7 @@ CLI_SCHEMA = (
     "python3 flight_briefing.py [ICAO...] "
     "--time HOURS "
     "[--type pattern|local|cross-country] "
-    "[--aircraft aquila_a211|cavalon_912_914] "
+    "[--aircraft aquila_a211|cavalon_914] "
     "[--pax NAME:WEIGHT_KG:HEIGHT_CM] "
     "[--baggage KG] "
     "[--no-pax] "
@@ -57,7 +57,7 @@ CLI_SCHEMA = (
 # Ordered list of available aircraft — update when adding new types to flight_briefing.py
 AIRCRAFT_CHOICES: list[tuple[str, str]] = [
     ("aquila_a211",      "Aquila A211"),
-    ("cavalon_912_914",  "AutoGyro Cavalon 912/914"),
+    ("cavalon_914",  "AutoGyro Cavalon 914"),
 ]
 
 # Keywords that map to an aircraft code without asking the user
@@ -65,11 +65,12 @@ AIRCRAFT_KEYWORDS: dict[str, str] = {
     "aquila":       "aquila_a211",
     "a211":         "aquila_a211",
     "a 211":        "aquila_a211",
-    "cavalon":      "cavalon_912_914",
-    "gyrocopter":   "cavalon_912_914",
-    "gyro":         "cavalon_912_914",
-    "gyroplane":    "cavalon_912_914",
-    "autogyro":     "cavalon_912_914",
+    "cavalon 914":  "cavalon_914",
+    "cavalon":      "cavalon_914",
+    "gyrocopter":   "cavalon_914",
+    "gyro":         "cavalon_914",
+    "gyroplane":    "cavalon_914",
+    "autogyro":     "cavalon_914",
 }
 
 DONE_PHRASES = [
@@ -117,6 +118,8 @@ class ConversationState:
     accumulated_request: str = ""
     # Selected aircraft code (set before parsing begins)
     aircraft_type: str = ""
+    # Pilot override name (empty = use stored pilot)
+    pilot_name: str = ""
     # DB-level missing data
     missing_airports: list = field(default_factory=list)
     missing_passengers: list = field(default_factory=list)
@@ -284,8 +287,14 @@ def _parse_duration(text: str):
 
 def _deterministic_parse(request: str):
     """Regex-based parser. Returns result dict or None if too ambiguous."""
-    text = request.strip()
+    text = _resolve_airport_names(request.strip())
     lower = text.lower()
+
+    # Detect pilot override so we can exclude them from passenger list
+    pilot_lower = ""
+    m_pilot = _re.search(r'\bwith\s+(\w+)\s+as\s+pilot\b|\b(\w+)\s+as\s+pilot\b', lower)
+    if m_pilot:
+        pilot_lower = next(g for g in m_pilot.groups() if g is not None).lower()
 
     icaos = _re.findall(r'\b([A-Z]{4})\b', text)
     if not icaos:
@@ -325,7 +334,7 @@ def _deterministic_parse(request: str):
 
     if not no_pax:
         for name_lower, pax in known_pax.items():
-            if name_lower in lower and name_lower != "francois":
+            if name_lower in lower and name_lower != "francois" and name_lower != pilot_lower:
                 pax_args.append(f"{pax['name']}:{int(pax['weight'])}:{int(pax['height'])}")
 
     if missing_airports:
@@ -411,6 +420,41 @@ def _detect_aircraft(text: str) -> Optional[str]:
             return code
     return None
 
+def _detect_pilot(text: str) -> Optional[str]:
+    """Extract pilot name from patterns like 'with X as pilot' or 'X as pilot'."""
+    m = re.search(r'\bwith\s+(\w+)\s+as\s+pilot\b|\b(\w+)\s+as\s+pilot\b', text, re.IGNORECASE)
+    if not m:
+        return None
+    name = next(g for g in m.groups() if g is not None)
+    return name.capitalize()
+
+def _resolve_airport_names(text: str) -> str:
+    """Replace known airport display names in the message with their ICAO codes."""
+    with db_connect() as conn:
+        try:
+            rows = conn.execute("""
+                SELECT ap.icao, COALESCE(ap.name, ag.name) AS name
+                FROM airport_profiles ap
+                LEFT JOIN airports_geo ag ON ag.icao = ap.icao
+                WHERE COALESCE(ap.name, ag.name) IS NOT NULL
+                  AND COALESCE(ap.name, ag.name) != ''
+            """).fetchall()
+        except Exception:
+            return text
+    result = text
+    for row in rows:
+        icao, name = row["icao"], row["name"]
+        if name and len(name) >= 3:
+            result = re.sub(r'\b' + re.escape(name) + r'\b', icao, result, flags=re.IGNORECASE)
+    return result
+
+def _extract_aircraft_name(cli_line: str) -> str:
+    m = re.search(r'--aircraft\s+(\S+)', cli_line)
+    if not m:
+        return ""
+    code = m.group(1)
+    return next((name for c, name in AIRCRAFT_CHOICES if c == code), code)
+
 def _aircraft_menu() -> str:
     lines = "\n".join(f"  {i + 1} - {name}" for i, (_, name) in enumerate(AIRCRAFT_CHOICES))
     return f"Which aircraft?\n{lines}"
@@ -422,6 +466,8 @@ async def handle_briefing_request(
     state = get_state(chat_id)
     state.accumulated_request = text
     state.clarify_rounds = 0
+
+    state.pilot_name = _detect_pilot(text) or ""
 
     detected = _detect_aircraft(text)
     if detected:
@@ -472,10 +518,12 @@ async def _run_parse_loop(
     log.info("[loop] result type=%s", result["type"])
 
     if result["type"] == "cli":
-        # All parameters gathered — inject aircraft type and execute
+        # All parameters gathered — inject aircraft and pilot overrides, then execute
         cli_line = result["line"]
         if state.aircraft_type and "--aircraft" not in cli_line:
             cli_line += f" --aircraft {state.aircraft_type}"
+        if state.pilot_name and "--pilot" not in cli_line:
+            cli_line += f" --pilot {state.pilot_name}"
         await execute_and_reply(update, context, cli_line)
 
     elif result["type"] == "clarify":
@@ -575,8 +623,13 @@ async def execute_and_reply(
 
     if success:
         route = _extract_route(cli_line)
+        aircraft_label = _extract_aircraft_name(cli_line)
+        details = f"Route: {route}\nAircraft: {aircraft_label or 'default'}"
+        m_pilot = re.search(r'--pilot\s+(\S+)', cli_line)
+        if m_pilot:
+            details += f"\nPilot: {m_pilot.group(1)}"
         await update.message.reply_text(
-            f"Your briefing is ready:\n{WEBSERVER_URL}\n\nRoute: {route}"
+            f"Your briefing is ready:\n{WEBSERVER_URL}\n\n{details}"
         )
     else:
         err = output[-1500:] if len(output) > 1500 else output

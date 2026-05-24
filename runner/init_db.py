@@ -26,6 +26,30 @@ def init_db() -> None:
         sql = SEED_PATH.read_text(encoding="utf-8")
         conn.executescript(sql)
         conn.commit()
+
+        # Migration: add name column to airport_profiles (safe to re-run)
+        try:
+            conn.execute("ALTER TABLE airport_profiles ADD COLUMN name TEXT")
+            conn.commit()
+            print("[init_db] Migration: added name column to airport_profiles")
+        except Exception:
+            pass  # column already exists
+
+        # Set known airport names where not yet populated
+        known_names = {"EDRF": "Mainbullau"}
+        for icao, name in known_names.items():
+            conn.execute(
+                "UPDATE airport_profiles SET name = ? WHERE icao = ? AND (name IS NULL OR name = '')",
+                (name, icao),
+            )
+        conn.commit()
+
+        # Migration: add Wolfgang to passengers (safe to re-run via INSERT OR IGNORE)
+        conn.execute(
+            "INSERT OR IGNORE INTO passengers (name, weight, height) VALUES ('Wolfgang', 70.0, 180.0)"
+        )
+        conn.commit()
+
         pilot_count = conn.execute("SELECT COUNT(*) FROM pilot").fetchone()[0]
         pax_count   = conn.execute("SELECT COUNT(*) FROM passengers").fetchone()[0]
         ap_count    = conn.execute("SELECT COUNT(*) FROM airport_profiles").fetchone()[0]

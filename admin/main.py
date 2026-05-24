@@ -83,7 +83,7 @@ def delete_passenger(name: str):
 def list_airports():
     with get_db() as conn:
         airports = conn.execute(
-            "SELECT ap.icao, ap.elevation_ft, ag.name, ag.lat, ag.lon "
+            "SELECT ap.icao, ap.elevation_ft, COALESCE(ap.name, ag.name) AS name, ag.lat, ag.lon "
             "FROM airport_profiles ap "
             "LEFT JOIN airports_geo ag ON ag.icao = ap.icao "
             "ORDER BY ap.icao"
@@ -102,9 +102,10 @@ def upsert_airport(a: Airport):
     icao = a.icao.upper()
     with get_db() as conn:
         conn.execute(
-            "INSERT INTO airport_profiles (icao, elevation_ft) VALUES (?,?) "
-            "ON CONFLICT(icao) DO UPDATE SET elevation_ft=excluded.elevation_ft",
-            (icao, a.elevation_ft)
+            "INSERT INTO airport_profiles (icao, elevation_ft, name) VALUES (?,?,?) "
+            "ON CONFLICT(icao) DO UPDATE SET elevation_ft=excluded.elevation_ft, "
+            "name=COALESCE(excluded.name, airport_profiles.name)",
+            (icao, a.elevation_ft, a.name)
         )
         if a.lat is not None and a.lon is not None:
             conn.execute(

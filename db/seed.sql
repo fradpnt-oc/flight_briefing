@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS passengers (
 
 CREATE TABLE IF NOT EXISTS airport_profiles (
     icao         TEXT PRIMARY KEY,
-    elevation_ft REAL NOT NULL
+    elevation_ft REAL NOT NULL,
+    name         TEXT
 );
 
 CREATE TABLE IF NOT EXISTS airport_runways (
@@ -36,30 +37,31 @@ INSERT OR IGNORE INTO pilot (id, name, height, weight)
     VALUES (1, 'Francois', 178.0, 80.0);
 
 -- Passengers
-INSERT OR IGNORE INTO passengers (name, weight, height) VALUES ('Gabi',  60.0, 165.0);
-INSERT OR IGNORE INTO passengers (name, weight, height) VALUES ('Eric',  68.0, 180.0);
-INSERT OR IGNORE INTO passengers (name, weight, height) VALUES ('Éric',  80.0, 175.0);
+INSERT OR IGNORE INTO passengers (name, weight, height) VALUES ('Gabi',     60.0, 165.0);
+INSERT OR IGNORE INTO passengers (name, weight, height) VALUES ('Eric',     68.0, 180.0);
+INSERT OR IGNORE INTO passengers (name, weight, height) VALUES ('Éric',     80.0, 175.0);
+INSERT OR IGNORE INTO passengers (name, weight, height) VALUES ('Wolfgang', 70.0, 180.0);
 
 -- Airport profiles
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDEF', 436.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDEL', 295.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDFA', 1102.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDFB', 398.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDFC', 410.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDFE', 385.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDFG', 413.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDFM', 309.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDFO', 1143.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDFU', 1500.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDFV', 295.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDFX', 315.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDFZ', 760.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDGP', 279.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDGX', 346.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDLE', 424.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDRF', 351.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('EDRY', 312.0);
-INSERT OR IGNORE INTO airport_profiles VALUES ('LFRI', 299.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDEF', 436.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDEL', 295.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDFA', 1102.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDFB', 398.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDFC', 410.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDFE', 385.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDFG', 413.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDFM', 309.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDFO', 1143.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDFU', 1500.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDFV', 295.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDFX', 315.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDFZ', 760.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDGP', 279.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDGX', 346.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDLE', 424.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft, name) VALUES ('EDRF', 351.0, 'Mainbullau');
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDRY', 312.0);
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('LFRI', 299.0);
 
 -- Airport runways
 INSERT OR IGNORE INTO airport_runways (icao, runway, surface, tora, lda) VALUES ('EDEF', '06/24', 'asphalt',   671.0,  671.0);
