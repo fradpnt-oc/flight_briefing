@@ -59,7 +59,7 @@ INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDFZ', 760.
 INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDGP', 279.0);
 INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDGX', 346.0);
 INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDLE', 424.0);
-INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft, name) VALUES ('EDRF', 351.0, 'Mainbullau');
+INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDRF', 351.0);
 INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('EDRY', 312.0);
 INSERT OR IGNORE INTO airport_profiles (icao, elevation_ft) VALUES ('LFRI', 299.0);
 

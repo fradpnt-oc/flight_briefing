@@ -23,17 +23,17 @@ def init_db() -> None:
 
     conn = sqlite3.connect(DB_PATH)
     try:
-        sql = SEED_PATH.read_text(encoding="utf-8")
-        conn.executescript(sql)
-        conn.commit()
-
-        # Migration: add name column to airport_profiles (safe to re-run)
+        # Migration: add name column before seed runs (seed may reference it)
         try:
             conn.execute("ALTER TABLE airport_profiles ADD COLUMN name TEXT")
             conn.commit()
             print("[init_db] Migration: added name column to airport_profiles")
         except Exception:
             pass  # column already exists
+
+        sql = SEED_PATH.read_text(encoding="utf-8")
+        conn.executescript(sql)
+        conn.commit()
 
         # Set known airport names where not yet populated
         known_names = {"EDRF": "Mainbullau"}
