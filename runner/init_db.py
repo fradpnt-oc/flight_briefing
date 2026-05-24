@@ -35,15 +35,6 @@ def init_db() -> None:
         conn.executescript(sql)
         conn.commit()
 
-        # Set known airport names where not yet populated
-        known_names = {"EDRF": "Mainbullau"}
-        for icao, name in known_names.items():
-            conn.execute(
-                "UPDATE airport_profiles SET name = ? WHERE icao = ? AND (name IS NULL OR name = '')",
-                (name, icao),
-            )
-        conn.commit()
-
         # Migration: add Wolfgang to passengers (safe to re-run via INSERT OR IGNORE)
         conn.execute(
             "INSERT OR IGNORE INTO passengers (name, weight, height) VALUES ('Wolfgang', 70.0, 180.0)"
