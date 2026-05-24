@@ -675,20 +675,38 @@ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     log.debug("Ignoring non-briefing message: %s", text[:80])
 
 
+async def on_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_chat.id != ALLOWED_CHAT_ID:
+        return
+    aircraft_list = "\n".join(f"  • {name}" for _, name in AIRCRAFT_CHOICES)
+    await update.message.reply_text(
+        "✈️  Flight Briefing Bot\n\n"
+        "── Commands ──\n"
+        "/help     Show this message\n"
+        "/airport  Manage airports\n"
+        "/pilots   Manage pilots & passengers\n"
+        "/status   Show conversation state\n"
+        "/cancel   Cancel current request\n\n"
+        "── Create a briefing ──\n"
+        "Say 'briefing' followed by your request. If you don't specify an aircraft I'll ask.\n\n"
+        "Examples:\n"
+        "  Briefing Cavalon EDFE pattern 1h solo\n"
+        "  Briefing Aquila EDFE EDFM 2h with Gabi\n"
+        "  Briefing EDFZ EDFE 3h cross country with Wolfgang as pilot\n"
+        "  Briefing EDFE pattern 45min 5kg baggage\n\n"
+        "── Aircraft ──\n"
+        f"{aircraft_list}\n\n"
+        "── Tips ──\n"
+        "• Name a passenger to include them (e.g. 'with Gabi')\n"
+        "• Say 'solo' or 'no passenger' to fly alone\n"
+        "• Add 'with X as pilot' to override the default pilot\n"
+        "• Airport names you've saved in /airport are recognised automatically"
+    )
+
 async def on_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_chat.id != ALLOWED_CHAT_ID:
         return
-    await update.message.reply_text(
-        "Flight Briefing Bot ready.\n\n"
-        "If you don't mention an aircraft, I'll ask which one to use.\n"
-        "You can also name it directly:\n"
-        "  Briefing Aquila EDFE pattern 1h solo\n"
-        "  Briefing Cavalon EDFE pattern 1h solo\n\n"
-        "Other examples:\n"
-        "  Briefing EDFE pattern me as pilot, Gabi 5kg, 2hrs\n"
-        "  Briefing cross country EDFE EDFM 2h no passenger\n"
-        "  Briefing EDFE EDFV EDFZ 2h30 with Eric 10kg"
-    )
+    await on_help(update, context)
 
 async def on_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_chat.id != ALLOWED_CHAT_ID:
@@ -709,6 +727,22 @@ async def on_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     reset_state(update.effective_chat.id)
     await update.message.reply_text("Cancelled. Ready for a new briefing request.")
 
+async def on_airport(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_chat.id != ALLOWED_CHAT_ID:
+        return
+    admin_url = WEBSERVER_URL.replace("/briefing", "/admin")
+    await update.message.reply_text(
+        f"Manage airports (ICAO, elevation, runways, name alias):\n{admin_url}#sec-airports"
+    )
+
+async def on_pilots(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_chat.id != ALLOWED_CHAT_ID:
+        return
+    admin_url = WEBSERVER_URL.replace("/briefing", "/admin")
+    await update.message.reply_text(
+        f"Manage pilots & passengers (name, weight, height):\n{admin_url}#sec-passengers"
+    )
+
 async def on_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_chat.id != ALLOWED_CHAT_ID:
         return
@@ -723,10 +757,23 @@ async def on_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 def main() -> None:
     log.info("Starting flight briefing bot (model: %s, ollama: %s)", OLLAMA_MODEL, OLLAMA_URL)
     app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start",  on_start))
-    app.add_handler(CommandHandler("status", on_status))
-    app.add_handler(CommandHandler("cancel", on_cancel))
+    app.add_handler(CommandHandler("start",   on_start))
+    app.add_handler(CommandHandler("help",    on_help))
+    app.add_handler(CommandHandler("airport", on_airport))
+    app.add_handler(CommandHandler("pilots",  on_pilots))
+    app.add_handler(CommandHandler("status",  on_status))
+    app.add_handler(CommandHandler("cancel",  on_cancel))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
+
+    async def post_init(application):
+        await application.bot.set_my_commands([
+            ("help",    "Show help and examples"),
+            ("airport", "Manage airports"),
+            ("pilots",  "Manage pilots & passengers"),
+            ("cancel",  "Cancel current request"),
+        ])
+
+    app.post_init = post_init
     log.info("Bot polling started")
     app.run_polling(drop_pending_updates=True)
 
