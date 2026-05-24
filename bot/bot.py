@@ -681,10 +681,10 @@ async def on_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     aircraft_list = "\n".join(f"  • {name}" for _, name in AIRCRAFT_CHOICES)
     await update.message.reply_text(
         "✈️  <b>Flight Briefing Bot</b>\n\n"
-        "/help - All commands with descriptions\n"
-        "/airport - Manage airports in the database\n"
-        "/pilots - Manage pilots &amp; passengers\n"
-        "/cancel - Abort the current request\n\n"
+        "help - All commands with descriptions\n"
+        "airport - Manage airports in the database\n"
+        "pilots - Manage pilots &amp; passengers\n"
+        "cancel - Abort the current request\n\n"
         "<b>Create a briefing</b> — tap an example to copy:\n\n"
         "<code>Briefing Cavalon EDFE pattern 1h solo</code>\n"
         "<code>Briefing Aquila EDFE EDFM 2h with Gabi</code>\n"
