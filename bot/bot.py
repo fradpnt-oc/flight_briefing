@@ -680,27 +680,26 @@ async def on_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     aircraft_list = "\n".join(f"  • {name}" for _, name in AIRCRAFT_CHOICES)
     await update.message.reply_text(
-        "✈️  Flight Briefing Bot\n\n"
-        "── Commands ──\n"
+        "✈️  <b>Flight Briefing Bot</b>\n\n"
+        "<b>── Commands ──</b>\n"
         "/help     Show this message\n"
         "/airport  Manage airports\n"
-        "/pilots   Manage pilots & passengers\n"
-        "/status   Show conversation state\n"
+        "/pilots   Manage pilots &amp; passengers\n"
         "/cancel   Cancel current request\n\n"
-        "── Create a briefing ──\n"
-        "Say 'briefing' followed by your request. If you don't specify an aircraft I'll ask.\n\n"
-        "Examples:\n"
-        "  Briefing Cavalon EDFE pattern 1h solo\n"
-        "  Briefing Aquila EDFE EDFM 2h with Gabi\n"
-        "  Briefing EDFZ EDFE 3h cross country with Wolfgang as pilot\n"
-        "  Briefing EDFE pattern 45min 5kg baggage\n\n"
-        "── Aircraft ──\n"
+        "<b>── Create a briefing ──</b>\n"
+        "Say <i>briefing</i> followed by your request. Tap an example to copy it:\n\n"
+        "<code>Briefing Cavalon EDFE pattern 1h solo</code>\n"
+        "<code>Briefing Aquila EDFE EDFM 2h with Gabi</code>\n"
+        "<code>Briefing EDFZ EDFE 3h cross country with Wolfgang as pilot</code>\n"
+        "<code>Briefing EDFE pattern 45min 5kg baggage</code>\n\n"
+        "<b>── Aircraft ──</b>\n"
         f"{aircraft_list}\n\n"
-        "── Tips ──\n"
-        "• Name a passenger to include them (e.g. 'with Gabi')\n"
-        "• Say 'solo' or 'no passenger' to fly alone\n"
-        "• Add 'with X as pilot' to override the default pilot\n"
-        "• Airport names you've saved in /airport are recognised automatically"
+        "<b>── Tips ──</b>\n"
+        "• Name a passenger to include them (e.g. <i>with Gabi</i>)\n"
+        "• Say <i>solo</i> or <i>no passenger</i> to fly alone\n"
+        "• Add <i>with X as pilot</i> to override the default pilot\n"
+        "• Airport names saved in /airport are recognised automatically",
+        parse_mode="HTML",
     )
 
 async def on_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -732,7 +731,9 @@ async def on_airport(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         return
     admin_url = WEBSERVER_URL.replace("/briefing", "/admin")
     await update.message.reply_text(
-        f"Manage airports (ICAO, elevation, runways, name alias):\n{admin_url}#sec-airports"
+        f"Manage airports (ICAO, elevation, runways, name alias):\n"
+        f"<code>{admin_url}#sec-airports</code>",
+        parse_mode="HTML",
     )
 
 async def on_pilots(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -740,7 +741,9 @@ async def on_pilots(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     admin_url = WEBSERVER_URL.replace("/briefing", "/admin")
     await update.message.reply_text(
-        f"Manage pilots & passengers (name, weight, height):\n{admin_url}#sec-passengers"
+        f"Manage pilots &amp; passengers (name, weight, height):\n"
+        f"<code>{admin_url}#sec-passengers</code>",
+        parse_mode="HTML",
     )
 
 async def on_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
