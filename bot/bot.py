@@ -43,7 +43,7 @@ CLI_SCHEMA = (
     "python3 flight_briefing.py [ICAO...] "
     "--time HOURS "
     "[--type pattern|local|cross-country] "
-    "[--aircraft aquila_a211|cavalon_914] "
+    "[--aircraft aquila_a211|cavalon_914|mto_sport_912] "
     "[--pax NAME:WEIGHT_KG:HEIGHT_CM] "
     "[--baggage KG] "
     "[--no-pax] "
@@ -56,21 +56,29 @@ CLI_SCHEMA = (
 
 # Ordered list of available aircraft — update when adding new types to flight_briefing.py
 AIRCRAFT_CHOICES: list[tuple[str, str]] = [
-    ("aquila_a211",      "Aquila A211"),
-    ("cavalon_914",  "AutoGyro Cavalon 914"),
+    ("aquila_a211",   "Aquila A211"),
+    ("cavalon_914",   "AutoGyro Cavalon 914"),
+    ("mto_sport_912", "AutoGyro MTO-Sport 912"),
 ]
 
 # Keywords that map to an aircraft code without asking the user
 AIRCRAFT_KEYWORDS: dict[str, str] = {
-    "aquila":       "aquila_a211",
-    "a211":         "aquila_a211",
-    "a 211":        "aquila_a211",
-    "cavalon 914":  "cavalon_914",
-    "cavalon":      "cavalon_914",
-    "gyrocopter":   "cavalon_914",
-    "gyro":         "cavalon_914",
-    "gyroplane":    "cavalon_914",
-    "autogyro":     "cavalon_914",
+    "aquila":           "aquila_a211",
+    "a211":             "aquila_a211",
+    "a 211":            "aquila_a211",
+    "cavalon 914":      "cavalon_914",
+    "cavalon":          "cavalon_914",
+    "mto sport 912":    "mto_sport_912",
+    "mto-sport 912":    "mto_sport_912",
+    "mto sport":        "mto_sport_912",
+    "mto-sport":        "mto_sport_912",
+    "mto 912":          "mto_sport_912",
+    "mto912":           "mto_sport_912",
+    "mto":              "mto_sport_912",
+    "gyrocopter":       "cavalon_914",
+    "gyro":             "cavalon_914",
+    "gyroplane":        "cavalon_914",
+    "autogyro":         "cavalon_914",
 }
 
 DONE_PHRASES = [
@@ -681,10 +689,10 @@ async def on_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     aircraft_list = "\n".join(f"  • {name}" for _, name in AIRCRAFT_CHOICES)
     await update.message.reply_text(
         "✈️  <b>Flight Briefing Bot</b>\n\n"
-        "help - All commands with descriptions\n"
-        "airport - Manage airports in the database\n"
-        "pilots - Manage pilots &amp; passengers\n"
-        "cancel - Abort the current request\n\n"
+        "/help - All commands with descriptions\n"
+        "/airport - Manage airports in the database\n"
+        "/pilots - Manage pilots &amp; passengers\n"
+        "/cancel - Abort the current request\n\n"
         "<b>Create a briefing</b> — tap an example to copy:\n\n"
         "<code>Briefing Cavalon EDFE pattern 1h solo</code>\n"
         "<code>Briefing Aquila EDFE EDFM 2h with Gabi</code>\n"
@@ -730,7 +738,7 @@ async def on_airport(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     admin_url = WEBSERVER_URL.replace("/briefing", "/admin")
     await update.message.reply_text(
         f"Manage airports (ICAO, elevation, runways, name alias):\n"
-        f"<code>{admin_url}#sec-airports</code>",
+        f'<a href="{admin_url}#sec-airports">{admin_url}#sec-airports</a>',
         parse_mode="HTML",
     )
 
@@ -740,7 +748,7 @@ async def on_pilots(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     admin_url = WEBSERVER_URL.replace("/briefing", "/admin")
     await update.message.reply_text(
         f"Manage pilots &amp; passengers (name, weight, height):\n"
-        f"<code>{admin_url}#sec-passengers</code>",
+        f'<a href="{admin_url}#sec-passengers">{admin_url}#sec-passengers</a>',
         parse_mode="HTML",
     )
 

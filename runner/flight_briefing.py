@@ -86,10 +86,14 @@ class AircraftConfig:
     cg_line_max: Optional[float] = None
     # Gyrocopter station-limit fields (None = not a gyrocopter)
     mtow: Optional[float] = None
-    max_seat_weight: Optional[float] = None
+    max_seat_weight: Optional[float] = None          # front/LH seat max
+    max_aft_seat_weight: Optional[float] = None      # aft/RH seat max (falls back to max_seat_weight)
     max_cockpit_weight: Optional[float] = None
     min_cockpit_weight: Optional[float] = None
     max_storage_weight: Optional[float] = None
+    max_baggage_weight: Optional[float] = None       # total baggage limit (overrides max_storage_weight * 2)
+    nose_penalty_factor: Optional[float] = None      # kg reduction in front seat max per kg of nose baggage
+    min_front_seat_weight: Optional[float] = None    # per-seat minimum (tandem only); distinct from min_cockpit_weight
     fuel_capacity_liters: Optional[float] = None
 
 
@@ -135,6 +139,29 @@ AIRCRAFT_TYPES: Dict[str, AircraftConfig] = {
         min_cockpit_weight=65.0,
         max_storage_weight=10.0,
         fuel_capacity_liters=98.0,
+    ),
+    "mto_sport_912": AircraftConfig(
+        code="mto_sport_912",
+        name="AutoGyro MTO-Sport 912",
+        empty_weight=247.0,
+        empty_lever=0.0,
+        fuel_start_roll=3.0,
+        fuel_climb=5.0,
+        fuel_cruise_per_hour=15.0,
+        fuel_reserve=7.5,
+        fuel_density=0.72,
+        fuel_lever=0.0,
+        baggage_lever=0.0,
+        max_passengers=1,
+        mtow=500.0,
+        max_seat_weight=125.0,
+        max_aft_seat_weight=129.0,
+        max_cockpit_weight=254.0,
+        min_cockpit_weight=60.0,
+        max_baggage_weight=10.0,
+        nose_penalty_factor=3.0,
+        min_front_seat_weight=60.0,
+        fuel_capacity_liters=64.0,
     ),
 }
 
@@ -844,9 +871,15 @@ def _build_mass_balance_gyrocopter(inputs: FlightInputs, fuel: Dict[str, Any], a
     cockpit_weight = lh_station + rh_station
     mtow = aircraft.mtow or 560.0
     max_seat = aircraft.max_seat_weight or 110.0
+    max_aft_seat = aircraft.max_aft_seat_weight if aircraft.max_aft_seat_weight is not None else max_seat
     max_cockpit = aircraft.max_cockpit_weight or 200.0
     min_cockpit = aircraft.min_cockpit_weight or 65.0
     max_storage = aircraft.max_storage_weight or 10.0
+    max_bag = aircraft.max_baggage_weight if aircraft.max_baggage_weight is not None else max_storage * 2
+    nose_penalty = aircraft.nose_penalty_factor
+    effective_max_front = max_seat
+    if nose_penalty is not None and inputs.baggage_weight > 0:
+        effective_max_front = max(0.0, max_seat - nose_penalty * inputs.baggage_weight)
     return {
         "stations": stations,
         "total_mass": round(total_mass, 1),
@@ -862,14 +895,19 @@ def _build_mass_balance_gyrocopter(inputs: FlightInputs, fuel: Dict[str, Any], a
         "baggage_weight": round(inputs.baggage_weight, 1),
         "mtow": mtow,
         "max_seat_weight": max_seat,
+        "effective_max_front_seat": round(effective_max_front, 1),
+        "nose_penalty_factor": nose_penalty,
+        "max_aft_seat_weight": max_aft_seat,
         "max_cockpit_weight": max_cockpit,
         "min_cockpit_weight": min_cockpit,
         "max_storage_weight": max_storage,
+        "max_baggage_kg": max_bag,
+        "min_front_seat_weight": aircraft.min_front_seat_weight,
         "within_mtow": total_mass <= mtow,
-        "lh_ok": lh_station <= max_seat,
-        "rh_ok": rh_station <= max_seat,
+        "lh_ok": lh_station <= effective_max_front,
+        "rh_ok": rh_station <= max_aft_seat,
         "cockpit_ok": min_cockpit <= cockpit_weight <= max_cockpit,
-        "baggage_ok": inputs.baggage_weight <= max_storage * 2,
+        "baggage_ok": inputs.baggage_weight <= max_bag,
     }
 
 
@@ -1528,9 +1566,15 @@ def build_briefing(inputs: FlightInputs, conn: Optional[sqlite3.Connection] = No
         if not mass_balance["within_mtow"]:
             warnings.append(f"Exceeds MTOW ({mass_balance['total_mass']} kg / {mass_balance['mtow']:.0f} kg)")
         if not mass_balance["lh_ok"]:
-            warnings.append(f"LH seat exceeds limit ({mass_balance['lh_station_weight']} kg / {mass_balance['max_seat_weight']:.0f} kg max)")
+            eff = mass_balance["effective_max_front_seat"]
+            base = mass_balance["max_seat_weight"]
+            penalty = mass_balance["nose_penalty_factor"]
+            if penalty and eff < base:
+                warnings.append(f"Front seat exceeds adjusted limit ({mass_balance['lh_station_weight']} kg / {eff:.0f} kg max after {mass_balance['baggage_weight']:.0f} kg nose load penalty)")
+            else:
+                warnings.append(f"Front seat exceeds limit ({mass_balance['lh_station_weight']} kg / {eff:.0f} kg max)")
         if not mass_balance["rh_ok"]:
-            warnings.append(f"RH seat exceeds limit ({mass_balance['rh_station_weight']} kg / {mass_balance['max_seat_weight']:.0f} kg max)")
+            warnings.append(f"Aft seat exceeds limit ({mass_balance['rh_station_weight']} kg / {mass_balance['max_aft_seat_weight']:.0f} kg max)")
         if not mass_balance["cockpit_ok"]:
             cw = mass_balance["cockpit_weight"]
             if cw < mass_balance["min_cockpit_weight"]:
@@ -1538,7 +1582,7 @@ def build_briefing(inputs: FlightInputs, conn: Optional[sqlite3.Connection] = No
             else:
                 warnings.append(f"Total cockpit exceeds maximum ({cw} kg / max {mass_balance['max_cockpit_weight']:.0f} kg)")
         if not mass_balance["baggage_ok"]:
-            warnings.append(f"Baggage exceeds storage capacity ({mass_balance['baggage_weight']} kg / max {mass_balance['max_storage_weight'] * 2:.0f} kg)")
+            warnings.append(f"Baggage exceeds storage capacity ({mass_balance['baggage_weight']} kg / max {mass_balance['max_baggage_kg']:.0f} kg)")
     elif mass_balance["inside_envelope"] is False:
         warnings.append("Center of gravity outside envelope")
     if aircraft.fuel_capacity_liters is not None and fuel["total_liters"] > aircraft.fuel_capacity_liters:
@@ -1946,16 +1990,20 @@ if (mass.gyrocopter) {
   srows += `<tr class="total-row"><td><strong>Total</strong></td><td><strong>${mass.total_mass} kg</strong></td></tr>`;
   const checks = [
     { label: 'Total vs MTOW', value: `${mass.total_mass} kg / ${mass.mtow} kg max`, ok: mass.within_mtow },
-    { label: 'LH seat — Pilot', value: `${mass.lh_station_weight} kg / ${mass.max_seat_weight} kg max`, ok: mass.lh_ok },
-    { label: 'RH seat — Passenger', value: `${mass.rh_station_weight} kg / ${mass.max_seat_weight} kg max`, ok: mass.rh_ok },
+    { label: 'Front seat — Pilot', value: (() => {
+        const min = mass.min_front_seat_weight ? ` (min ${mass.min_front_seat_weight} /` : ' (';
+        if (mass.nose_penalty_factor && mass.baggage_weight > 0)
+          return `${mass.lh_station_weight} kg${min}max ${mass.effective_max_front_seat} kg — base ${mass.max_seat_weight} − ${mass.nose_penalty_factor}×${mass.baggage_weight} kg nose)`;
+        return `${mass.lh_station_weight} kg${min}max ${mass.max_seat_weight} kg)`;
+      })(), ok: mass.lh_ok },
+    { label: 'Aft seat — Passenger', value: `${mass.rh_station_weight} kg / ${mass.max_aft_seat_weight} kg max`, ok: mass.rh_ok },
     { label: 'Total cockpit', value: `${mass.cockpit_weight} kg (min ${mass.min_cockpit_weight} / max ${mass.max_cockpit_weight} kg)`, ok: mass.cockpit_ok },
-    { label: 'Baggage (total storage)', value: `${mass.baggage_weight} kg / ${mass.max_storage_weight * 2} kg max`, ok: mass.baggage_ok },
+    { label: 'Baggage (storage)', value: `${mass.baggage_weight} kg / ${mass.max_baggage_kg} kg max`, ok: mass.baggage_ok },
   ];
   let crows = checks.map(c => `<tr><td>${c.label}</td><td>${c.value}</td><td>${okIcon(c.ok)}</td></tr>`).join('');
   qs('#mass-table').innerHTML = `<table><tr><th>Station</th><th>Mass</th></tr>${srows}</table>
     <h3>Weight Limits</h3>
-    <table><tr><th>Check</th><th>Value</th><th></th></tr>${crows}</table>
-    <p style="font-size:0.85rem;color:#666;margin-top:0.5rem;">Note: storage compartment weight counts against its seat station limit (max ${mass.max_seat_weight} kg per station incl. storage behind it).</p>`;
+    <table><tr><th>Check</th><th>Value</th><th></th></tr>${crows}</table>`;
   document.getElementById('cg-chart').style.display = 'none';
 } else {
   let rows = mass.stations.map(st => `<tr><td>${st.label}</td><td>${st.mass.toFixed(1)}</td><td>${st.lever.toFixed(3)}</td><td>${st.moment.toFixed(1)}</td></tr>`).join('');
