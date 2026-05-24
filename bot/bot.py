@@ -681,24 +681,22 @@ async def on_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     aircraft_list = "\n".join(f"  • {name}" for _, name in AIRCRAFT_CHOICES)
     await update.message.reply_text(
         "✈️  <b>Flight Briefing Bot</b>\n\n"
-        "<b>── Commands ──</b>\n"
-        "/help     Show this message\n"
-        "/airport  Manage airports\n"
-        "/pilots   Manage pilots &amp; passengers\n"
-        "/cancel   Cancel current request\n\n"
-        "<b>── Create a briefing ──</b>\n"
-        "Say <i>briefing</i> followed by your request. Tap an example to copy it:\n\n"
+        "/help - All commands with descriptions\n"
+        "/airport - Manage airports in the database\n"
+        "/pilots - Manage pilots &amp; passengers\n"
+        "/cancel - Abort the current request\n\n"
+        "<b>Create a briefing</b> — tap an example to copy:\n\n"
         "<code>Briefing Cavalon EDFE pattern 1h solo</code>\n"
         "<code>Briefing Aquila EDFE EDFM 2h with Gabi</code>\n"
         "<code>Briefing EDFZ EDFE 3h cross country with Wolfgang as pilot</code>\n"
         "<code>Briefing EDFE pattern 45min 5kg baggage</code>\n\n"
-        "<b>── Aircraft ──</b>\n"
+        "<b>Aircraft</b>\n"
         f"{aircraft_list}\n\n"
-        "<b>── Tips ──</b>\n"
-        "• Name a passenger to include them (e.g. <i>with Gabi</i>)\n"
-        "• Say <i>solo</i> or <i>no passenger</i> to fly alone\n"
-        "• Add <i>with X as pilot</i> to override the default pilot\n"
-        "• Airport names saved in /airport are recognised automatically",
+        "<b>Tips</b>\n"
+        "Name a passenger to include them — <i>with Gabi</i>\n"
+        "Say <i>solo</i> or <i>no passenger</i> to fly alone\n"
+        "Add <i>with X as pilot</i> to change the pilot\n"
+        "Airport names saved in /airport are auto-recognised",
         parse_mode="HTML",
     )
 
