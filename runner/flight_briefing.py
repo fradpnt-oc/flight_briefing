@@ -1926,7 +1926,7 @@ const worstComponentForSpeed = (speed, heading, wind) => {
     dirs.push(varFrom, varTo);
   }
   if (!dirs.length) {
-    return wind.variable ? -spd : null;
+    return null;
   }
   let worstAngle = -1;
   let worstComponent = null;
@@ -2002,9 +2002,23 @@ const individualRunwayWind = (runwayId, wind) => {
   if (!wind) return 'N/A';
   const baseSpeed = toNumber(wind.speed_kt);
   if (baseSpeed === null) return 'N/A';
+  const gustSpeed = toNumber(wind.gust_kt);
+  const parts = runwayId ? runwayId.split('/') : [runwayId];
+  if (parts.length > 1) {
+    const results = parts.map(part => {
+      const h = runwayHeading(part.trim());
+      if (h === null) return null;
+      const base = worstComponentForSpeed(baseSpeed, h, wind);
+      const gust = gustSpeed !== null ? worstComponentForSpeed(gustSpeed, h, wind) : null;
+      return { part: part.trim(), text: formatComponentText(base, gust) };
+    }).filter(r => r !== null);
+    if (!results.length) return 'N/A';
+    const unique = [...new Set(results.map(r => r.text))];
+    if (unique.length === 1) return unique[0];
+    return results.map(r => `Rwy ${r.part}: ${r.text}`).join(' / ');
+  }
   const heading = runwayHeading(runwayId);
   if (heading === null) return 'N/A';
-  const gustSpeed = toNumber(wind.gust_kt);
   const baseComponent = worstComponentForSpeed(baseSpeed, heading, wind);
   const gustComponent = gustSpeed !== null ? worstComponentForSpeed(gustSpeed, heading, wind) : null;
   return formatComponentText(baseComponent, gustComponent);
