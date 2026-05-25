@@ -3,6 +3,91 @@
 -- Applied once on first container start via init_db.py
 -- ============================================================
 
+CREATE TABLE IF NOT EXISTS aircraft (
+    code                  TEXT    PRIMARY KEY,
+    name                  TEXT    NOT NULL,
+    type                  TEXT    NOT NULL DEFAULT 'fixed_wing',
+    aliases               TEXT,
+    empty_weight          REAL    NOT NULL,
+    empty_lever           REAL    NOT NULL DEFAULT 0.0,
+    fuel_start_roll       REAL    NOT NULL DEFAULT 0.0,
+    fuel_climb            REAL    NOT NULL DEFAULT 0.0,
+    fuel_cruise_per_hour  REAL    NOT NULL,
+    fuel_reserve          REAL    NOT NULL,
+    fuel_density          REAL    NOT NULL DEFAULT 0.72,
+    fuel_lever            REAL    NOT NULL DEFAULT 0.0,
+    baggage_lever         REAL    NOT NULL DEFAULT 0.0,
+    max_passengers        INTEGER NOT NULL DEFAULT 1,
+    fuel_capacity_liters  REAL,
+    cg_line_min           REAL,
+    cg_line_max           REAL,
+    mtow                  REAL,
+    max_seat_weight       REAL,
+    max_aft_seat_weight   REAL,
+    max_cockpit_weight    REAL,
+    min_cockpit_weight    REAL,
+    max_storage_weight    REAL,
+    max_baggage_weight    REAL,
+    min_front_seat_weight REAL,
+    nose_penalty_factor   REAL
+);
+
+CREATE TABLE IF NOT EXISTS aircraft_cg_envelope (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    aircraft_code TEXT    NOT NULL,
+    sort_order    INTEGER NOT NULL DEFAULT 0,
+    mass_kg       REAL    NOT NULL,
+    cg_mm         REAL    NOT NULL,
+    FOREIGN KEY (aircraft_code) REFERENCES aircraft(code) ON DELETE CASCADE
+);
+
+INSERT OR IGNORE INTO aircraft
+    (code, name, type, aliases,
+     empty_weight, empty_lever, fuel_start_roll, fuel_climb,
+     fuel_cruise_per_hour, fuel_reserve, fuel_density, fuel_lever, baggage_lever,
+     max_passengers, cg_line_min, cg_line_max)
+VALUES
+    ('aquila_a211', 'Aquila A211', 'fixed_wing', 'aquila,a211,a 211',
+     514.5, 0.439, 3.0, 5.0,
+     22.0, 11.0, 0.72, 0.325, 1.3,
+     1, 0.427, 0.515);
+
+INSERT OR IGNORE INTO aircraft_cg_envelope (aircraft_code, sort_order, mass_kg, cg_mm) VALUES
+    ('aquila_a211', 0, 560, 240),
+    ('aquila_a211', 1, 560, 290),
+    ('aquila_a211', 2, 750, 390),
+    ('aquila_a211', 3, 750, 320);
+
+INSERT OR IGNORE INTO aircraft
+    (code, name, type, aliases,
+     empty_weight, empty_lever, fuel_start_roll, fuel_climb,
+     fuel_cruise_per_hour, fuel_reserve, fuel_density, fuel_lever, baggage_lever,
+     max_passengers, fuel_capacity_liters,
+     mtow, max_seat_weight, max_cockpit_weight, min_cockpit_weight, max_storage_weight)
+VALUES
+    ('cavalon_914', 'AutoGyro Cavalon 914', 'gyro_side_by_side',
+     'cavalon 914,cavalon,gyrocopter,gyro,gyroplane,autogyro',
+     290.0, 0.0, 3.0, 5.0,
+     20.0, 10.0, 0.72, 0.0, 0.0,
+     1, 98.0,
+     560.0, 110.0, 200.0, 65.0, 10.0);
+
+INSERT OR IGNORE INTO aircraft
+    (code, name, type, aliases,
+     empty_weight, empty_lever, fuel_start_roll, fuel_climb,
+     fuel_cruise_per_hour, fuel_reserve, fuel_density, fuel_lever, baggage_lever,
+     max_passengers, fuel_capacity_liters,
+     mtow, max_seat_weight, max_aft_seat_weight, max_cockpit_weight, min_cockpit_weight,
+     max_baggage_weight, min_front_seat_weight, nose_penalty_factor)
+VALUES
+    ('mto_sport_912', 'AutoGyro MTO-Sport 912', 'gyro_tandem',
+     'mto sport 912,mto-sport 912,mto sport,mto-sport,mto 912,mto912,mto',
+     247.0, 0.0, 3.0, 5.0,
+     15.0, 7.5, 0.72, 0.0, 0.0,
+     1, 64.0,
+     500.0, 125.0, 129.0, 254.0, 60.0,
+     10.0, 60.0, 3.0);
+
 CREATE TABLE IF NOT EXISTS pilot (
     id      INTEGER PRIMARY KEY CHECK (id = 1),
     name    TEXT    NOT NULL,

@@ -37,6 +37,39 @@ class Passenger(BaseModel):
     weight: float
     height: float
 
+class CgPoint(BaseModel):
+    mass_kg: float
+    cg_mm: float
+
+class AircraftModel(BaseModel):
+    code: str
+    name: str
+    type: str  # fixed_wing | gyro_side_by_side | gyro_tandem
+    aliases: Optional[str] = None
+    empty_weight: float
+    empty_lever: float = 0.0
+    fuel_start_roll: float = 0.0
+    fuel_climb: float = 0.0
+    fuel_cruise_per_hour: float
+    fuel_reserve: float
+    fuel_density: float = 0.72
+    fuel_lever: float = 0.0
+    baggage_lever: float = 0.0
+    max_passengers: int = 1
+    fuel_capacity_liters: Optional[float] = None
+    cg_line_min: Optional[float] = None
+    cg_line_max: Optional[float] = None
+    mtow: Optional[float] = None
+    max_seat_weight: Optional[float] = None
+    max_aft_seat_weight: Optional[float] = None
+    max_cockpit_weight: Optional[float] = None
+    min_cockpit_weight: Optional[float] = None
+    max_storage_weight: Optional[float] = None
+    max_baggage_weight: Optional[float] = None
+    min_front_seat_weight: Optional[float] = None
+    nose_penalty_factor: Optional[float] = None
+    cg_envelope: List[CgPoint] = []
+
 class Runway(BaseModel):
     runway: str
     surface: str
@@ -133,4 +166,73 @@ def delete_airport(icao: str):
 
 @app.get("/health")
 def health():
+    return {"ok": True}
+
+
+# ── Aircraft ──────────────────────────────────────────────────────────────────
+
+_AIRCRAFT_COLS = [
+    "code","name","type","aliases","empty_weight","empty_lever",
+    "fuel_start_roll","fuel_climb","fuel_cruise_per_hour","fuel_reserve",
+    "fuel_density","fuel_lever","baggage_lever","max_passengers",
+    "fuel_capacity_liters","cg_line_min","cg_line_max",
+    "mtow","max_seat_weight","max_aft_seat_weight","max_cockpit_weight",
+    "min_cockpit_weight","max_storage_weight","max_baggage_weight",
+    "min_front_seat_weight","nose_penalty_factor",
+]
+
+@app.get("/aircraft")
+def list_aircraft():
+    with get_db() as conn:
+        rows = conn.execute(
+            f"SELECT {','.join(_AIRCRAFT_COLS)} FROM aircraft ORDER BY name"
+        ).fetchall()
+        result = []
+        for row in rows:
+            ac = dict(row)
+            pts = conn.execute(
+                "SELECT mass_kg, cg_mm FROM aircraft_cg_envelope "
+                "WHERE aircraft_code=? ORDER BY sort_order",
+                (ac["code"],)
+            ).fetchall()
+            ac["cg_envelope"] = [dict(p) for p in pts]
+            result.append(ac)
+    return result
+
+@app.post("/aircraft")
+def upsert_aircraft(ac: AircraftModel):
+    code = ac.code.strip().lower().replace(" ", "_")
+    vals = (
+        code, ac.name, ac.type, ac.aliases,
+        ac.empty_weight, ac.empty_lever, ac.fuel_start_roll, ac.fuel_climb,
+        ac.fuel_cruise_per_hour, ac.fuel_reserve, ac.fuel_density,
+        ac.fuel_lever, ac.baggage_lever, ac.max_passengers,
+        ac.fuel_capacity_liters, ac.cg_line_min, ac.cg_line_max,
+        ac.mtow, ac.max_seat_weight, ac.max_aft_seat_weight,
+        ac.max_cockpit_weight, ac.min_cockpit_weight,
+        ac.max_storage_weight, ac.max_baggage_weight,
+        ac.min_front_seat_weight, ac.nose_penalty_factor,
+    )
+    placeholders = ",".join(["?"] * len(_AIRCRAFT_COLS))
+    updates = ",".join(f"{c}=excluded.{c}" for c in _AIRCRAFT_COLS if c != "code")
+    with get_db() as conn:
+        conn.execute(
+            f"INSERT INTO aircraft ({','.join(_AIRCRAFT_COLS)}) VALUES ({placeholders}) "
+            f"ON CONFLICT(code) DO UPDATE SET {updates}",
+            vals,
+        )
+        conn.execute("DELETE FROM aircraft_cg_envelope WHERE aircraft_code=?", (code,))
+        if ac.cg_envelope:
+            conn.executemany(
+                "INSERT INTO aircraft_cg_envelope (aircraft_code, sort_order, mass_kg, cg_mm) VALUES (?,?,?,?)",
+                [(code, i, p.mass_kg, p.cg_mm) for i, p in enumerate(ac.cg_envelope)],
+            )
+    return {"ok": True}
+
+@app.delete("/aircraft/{code}")
+def delete_aircraft(code: str):
+    code = code.strip().lower()
+    with get_db() as conn:
+        conn.execute("DELETE FROM aircraft_cg_envelope WHERE aircraft_code=?", (code,))
+        conn.execute("DELETE FROM aircraft WHERE code=?", (code,))
     return {"ok": True}

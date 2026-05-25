@@ -168,6 +168,54 @@ AIRCRAFT_TYPES: Dict[str, AircraftConfig] = {
 DEFAULT_AIRCRAFT_TYPE = "aquila_a211"
 
 
+def _row_to_aircraft_config(row: dict, envelope_rows: list) -> AircraftConfig:
+    cg_env = [(r["mass_kg"], r["cg_mm"]) for r in envelope_rows] or None
+    return AircraftConfig(
+        code=row["code"],
+        name=row["name"],
+        empty_weight=row["empty_weight"],
+        empty_lever=row["empty_lever"] or 0.0,
+        fuel_start_roll=row["fuel_start_roll"] or 0.0,
+        fuel_climb=row["fuel_climb"] or 0.0,
+        fuel_cruise_per_hour=row["fuel_cruise_per_hour"],
+        fuel_reserve=row["fuel_reserve"],
+        fuel_density=row["fuel_density"] or 0.72,
+        fuel_lever=row["fuel_lever"] or 0.0,
+        baggage_lever=row["baggage_lever"] or 0.0,
+        max_passengers=row["max_passengers"] if row["max_passengers"] is not None else 1,
+        cg_envelope=cg_env,
+        cg_line_min=row["cg_line_min"],
+        cg_line_max=row["cg_line_max"],
+        mtow=row["mtow"],
+        max_seat_weight=row["max_seat_weight"],
+        max_aft_seat_weight=row["max_aft_seat_weight"],
+        max_cockpit_weight=row["max_cockpit_weight"],
+        min_cockpit_weight=row["min_cockpit_weight"],
+        max_storage_weight=row["max_storage_weight"],
+        max_baggage_weight=row["max_baggage_weight"],
+        min_front_seat_weight=row["min_front_seat_weight"],
+        nose_penalty_factor=row["nose_penalty_factor"],
+        fuel_capacity_liters=row["fuel_capacity_liters"],
+    )
+
+
+def load_aircraft_from_db(conn: sqlite3.Connection) -> Dict[str, "AircraftConfig"]:
+    try:
+        rows = conn.execute("SELECT * FROM aircraft ORDER BY code").fetchall()
+    except sqlite3.OperationalError:
+        return {}
+    result: Dict[str, AircraftConfig] = {}
+    for row in rows:
+        d = dict(row)
+        code = d["code"]
+        env = conn.execute(
+            "SELECT mass_kg, cg_mm FROM aircraft_cg_envelope WHERE aircraft_code=? ORDER BY sort_order",
+            (code,),
+        ).fetchall()
+        result[code] = _row_to_aircraft_config(d, [dict(r) for r in env])
+    return result
+
+
 def get_aircraft_config(code: str) -> AircraftConfig:
     key = (code or DEFAULT_AIRCRAFT_TYPE).lower()
     if key not in AIRCRAFT_TYPES:
@@ -1654,6 +1702,15 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 def main() -> None:
     import time as _time
     t_start = _time.time()
+
+    # Load aircraft from DB first so --aircraft choices reflect DB state
+    _pre_conn = sqlite3.connect(DB_PATH)
+    _pre_conn.row_factory = sqlite3.Row
+    db_aircraft = load_aircraft_from_db(_pre_conn)
+    _pre_conn.close()
+    if db_aircraft:
+        AIRCRAFT_TYPES.clear()
+        AIRCRAFT_TYPES.update(db_aircraft)
 
     parser = _build_arg_parser()
     args = parser.parse_args()

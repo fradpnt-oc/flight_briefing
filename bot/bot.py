@@ -54,32 +54,33 @@ CLI_SCHEMA = (
     "  flight_briefing.py EDFE EDFV EDFZ --time 2.5 --pax Gabi:60:165 --baggage 5 --yes"
 )
 
-# Ordered list of available aircraft — update when adding new types to flight_briefing.py
-AIRCRAFT_CHOICES: list[tuple[str, str]] = [
-    ("aquila_a211",   "Aquila A211"),
-    ("cavalon_914",   "AutoGyro Cavalon 914"),
-    ("mto_sport_912", "AutoGyro MTO-Sport 912"),
-]
+AIRCRAFT_CHOICES: list[tuple[str, str]] = []
+AIRCRAFT_KEYWORDS: dict[str, str] = {}
 
-# Keywords that map to an aircraft code without asking the user
-AIRCRAFT_KEYWORDS: dict[str, str] = {
-    "aquila":           "aquila_a211",
-    "a211":             "aquila_a211",
-    "a 211":            "aquila_a211",
-    "cavalon 914":      "cavalon_914",
-    "cavalon":          "cavalon_914",
-    "mto sport 912":    "mto_sport_912",
-    "mto-sport 912":    "mto_sport_912",
-    "mto sport":        "mto_sport_912",
-    "mto-sport":        "mto_sport_912",
-    "mto 912":          "mto_sport_912",
-    "mto912":           "mto_sport_912",
-    "mto":              "mto_sport_912",
-    "gyrocopter":       "cavalon_914",
-    "gyro":             "cavalon_914",
-    "gyroplane":        "cavalon_914",
-    "autogyro":         "cavalon_914",
-}
+def reload_aircraft_from_db() -> None:
+    """Load aircraft choices and keyword aliases from the DB."""
+    global AIRCRAFT_CHOICES, AIRCRAFT_KEYWORDS
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute("SELECT code, name, aliases FROM aircraft ORDER BY name").fetchall()
+        conn.close()
+    except Exception as exc:
+        log.warning("Could not load aircraft from DB: %s", exc)
+        return
+    choices = []
+    keywords: dict[str, str] = {}
+    for code, name, aliases in rows:
+        choices.append((code, name))
+        if aliases:
+            for alias in aliases.split(","):
+                kw = alias.strip().lower()
+                if kw:
+                    keywords[kw] = code
+        # Always map the code itself
+        keywords[code.lower()] = code
+    AIRCRAFT_CHOICES = choices
+    AIRCRAFT_KEYWORDS = keywords
+    log.info("Loaded %d aircraft from DB", len(choices))
 
 DONE_PHRASES = [
     "done", "i'm done", "im done", "all set", "all good", "ready",
@@ -692,6 +693,7 @@ async def on_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "/help - All commands with descriptions\n"
         "/airport - Manage airports in the database\n"
         "/pilots - Manage pilots &amp; passengers\n"
+        "/aircraft - Manage aircraft types\n"
         "/cancel - Abort the current request\n\n"
         "<b>Create a briefing</b> — tap an example to copy:\n\n"
         "<code>Briefing Cavalon EDFE pattern 1h solo</code>\n"
@@ -752,6 +754,16 @@ async def on_pilots(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         parse_mode="HTML",
     )
 
+async def on_aircraft(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_chat.id != ALLOWED_CHAT_ID:
+        return
+    admin_url = WEBSERVER_URL.replace("/briefing", "/admin")
+    await update.message.reply_text(
+        f"Manage aircraft types (create, edit, delete):\n"
+        f'<a href="{admin_url}#sec-aircraft">{admin_url}#sec-aircraft</a>',
+        parse_mode="HTML",
+    )
+
 async def on_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_chat.id != ALLOWED_CHAT_ID:
         return
@@ -765,21 +777,25 @@ async def on_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 def main() -> None:
     log.info("Starting flight briefing bot (model: %s, ollama: %s)", OLLAMA_MODEL, OLLAMA_URL)
+    reload_aircraft_from_db()
     app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start",   on_start))
-    app.add_handler(CommandHandler("help",    on_help))
-    app.add_handler(CommandHandler("airport", on_airport))
-    app.add_handler(CommandHandler("pilots",  on_pilots))
-    app.add_handler(CommandHandler("status",  on_status))
-    app.add_handler(CommandHandler("cancel",  on_cancel))
+    app.add_handler(CommandHandler("start",    on_start))
+    app.add_handler(CommandHandler("help",     on_help))
+    app.add_handler(CommandHandler("airport",  on_airport))
+    app.add_handler(CommandHandler("pilots",   on_pilots))
+    app.add_handler(CommandHandler("aircraft", on_aircraft))
+    app.add_handler(CommandHandler("status",   on_status))
+    app.add_handler(CommandHandler("cancel",   on_cancel))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
 
     async def post_init(application):
+        reload_aircraft_from_db()
         await application.bot.set_my_commands([
-            ("help",    "Show help and examples"),
-            ("airport", "Manage airports"),
-            ("pilots",  "Manage pilots & passengers"),
-            ("cancel",  "Cancel current request"),
+            ("help",     "Show help and examples"),
+            ("airport",  "Manage airports"),
+            ("pilots",   "Manage pilots & passengers"),
+            ("aircraft", "Manage aircraft types"),
+            ("cancel",   "Cancel current request"),
         ])
 
     app.post_init = post_init

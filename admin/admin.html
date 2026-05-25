@@ -197,12 +197,13 @@ body {
     <span class="header-icon">✈️</span>
     <div>
       <div class="header-title">Briefing Admin</div>
-      <div class="header-sub">Airports &amp; Passengers</div>
+      <div class="header-sub">Airports, Passengers &amp; Aircraft</div>
     </div>
   </div>
   <div class="tabs">
     <div class="tab active" onclick="showTab('airports')">Airports</div>
     <div class="tab" onclick="showTab('passengers')">Passengers</div>
+    <div class="tab" onclick="showTab('aircraft')">Aircraft</div>
   </div>
 </div>
 
@@ -284,6 +285,126 @@ body {
   </div>
 
   <div id="pax-list"></div>
+<!-- AIRCRAFT -->
+<div id="sec-aircraft" class="section">
+
+  <div id="ac-add" style="display:none" class="add-form">
+    <div class="form-title" id="ac-form-title">Add Aircraft</div>
+
+    <!-- Common fields -->
+    <div class="field">
+      <label>Code <span style="color:var(--muted);font-weight:400;text-transform:none">(unique ID, e.g. my_plane_100)</span></label>
+      <input id="ac-code" type="text" placeholder="my_plane_100"/>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Display Name</label>
+        <input id="ac-name" type="text" placeholder="My Plane 100"/>
+      </div>
+      <div class="field">
+        <label>Type</label>
+        <select id="ac-type" onchange="onAcTypeChange()">
+          <option value="fixed_wing">Fixed-wing</option>
+          <option value="gyro_side_by_side">Gyrocopter — Side-by-side</option>
+          <option value="gyro_tandem">Gyrocopter — Tandem</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Bot aliases <span style="color:var(--muted);font-weight:400;text-transform:none">(comma-separated, lowercase)</span></label>
+      <input id="ac-aliases" type="text" placeholder="my plane,myplane,mp100"/>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Empty Weight (kg)</label><input id="ac-empty-weight" type="number" step="0.1" placeholder="290"/></div>
+      <div class="field"><label>Max Passengers</label><input id="ac-max-pax" type="number" step="1" min="0" max="4" placeholder="1"/></div>
+    </div>
+
+    <hr class="divider"/>
+    <div class="form-title">Fuel</div>
+    <div class="field-row">
+      <div class="field"><label>Cruise (L/h)</label><input id="ac-fuel-cruise" type="number" step="0.1" placeholder="20"/></div>
+      <div class="field"><label>Reserve (L)</label><input id="ac-fuel-reserve" type="number" step="0.1" placeholder="10"/></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Tank capacity (L)</label><input id="ac-fuel-cap" type="number" step="0.1" placeholder="98"/></div>
+      <div class="field"><label>Density (kg/L)</label><input id="ac-fuel-density" type="number" step="0.01" placeholder="0.72"/></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Start/taxi (L)</label><input id="ac-fuel-start" type="number" step="0.1" placeholder="3"/></div>
+      <div class="field"><label>Climb (L)</label><input id="ac-fuel-climb" type="number" step="0.1" placeholder="5"/></div>
+    </div>
+
+    <!-- ── Fixed-wing only ── -->
+    <div id="ac-fw-section" style="display:none">
+      <hr class="divider"/>
+      <div class="form-title">Weight &amp; Balance — Fixed-wing</div>
+      <div class="field-row">
+        <div class="field"><label>Empty lever (m)</label><input id="ac-empty-lever" type="number" step="0.001" placeholder="0.439"/></div>
+        <div class="field"><label>Fuel lever (m)</label><input id="ac-fuel-lever" type="number" step="0.001" placeholder="0.325"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Baggage lever (m)</label><input id="ac-bag-lever" type="number" step="0.001" placeholder="1.3"/></div>
+        <div class="field"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>CG min at ref mass (m)</label><input id="ac-cg-min" type="number" step="0.001" placeholder="0.427"/></div>
+        <div class="field"><label>CG max at ref mass (m)</label><input id="ac-cg-max" type="number" step="0.001" placeholder="0.515"/></div>
+      </div>
+      <div class="field">
+        <label>CG Envelope — points (mass kg / CG mm)</label>
+        <div id="ac-env-list"></div>
+        <button class="btn btn-add btn-full" style="margin-top:6px" onclick="addEnvPoint()">+ Add Point</button>
+      </div>
+    </div>
+
+    <!-- ── Gyrocopter common ── -->
+    <div id="ac-gyro-section" style="display:none">
+      <hr class="divider"/>
+      <div class="form-title">Weight &amp; Balance — Gyrocopter</div>
+      <div class="field-row">
+        <div class="field"><label>MTOW (kg)</label><input id="ac-mtow" type="number" step="0.1" placeholder="560"/></div>
+        <div class="field"><label>Max baggage (kg)</label><input id="ac-max-bag" type="number" step="0.1" placeholder="10"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Total cockpit min (kg)</label><input id="ac-cmin" type="number" step="0.1" placeholder="65"/></div>
+        <div class="field"><label>Total cockpit max (kg)</label><input id="ac-cmax" type="number" step="0.1" placeholder="200"/></div>
+      </div>
+    </div>
+
+    <!-- ── Side-by-side extra ── -->
+    <div id="ac-sbs-section" style="display:none">
+      <div class="field">
+        <label>Max seat weight — both seats (kg)</label>
+        <input id="ac-max-seat" type="number" step="0.1" placeholder="110"/>
+      </div>
+    </div>
+
+    <!-- ── Tandem extra ── -->
+    <div id="ac-tandem-section" style="display:none">
+      <div class="field-row">
+        <div class="field"><label>Front seat max (kg)</label><input id="ac-front-max" type="number" step="0.1" placeholder="125"/></div>
+        <div class="field"><label>Front seat min (kg)</label><input id="ac-front-min" type="number" step="0.1" placeholder="60"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Aft seat max (kg)</label><input id="ac-aft-max" type="number" step="0.1" placeholder="129"/></div>
+        <div class="field"><label>Nose penalty factor</label><input id="ac-nose-pen" type="number" step="0.1" placeholder="3"/></div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:-6px;margin-bottom:10px">
+        Nose penalty: each kg of nose baggage reduces front seat max by this factor
+      </div>
+    </div>
+
+    <hr class="divider"/>
+    <button class="btn btn-primary" onclick="saveAircraft()">Save Aircraft</button>
+    <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="toggleAcForm(false)">Cancel</button>
+  </div>
+
+  <div class="section-header">
+    <span class="section-count" id="ac-count"></span>
+    <button class="btn btn-add btn-sm" onclick="toggleAcForm(true)">+ Add</button>
+  </div>
+  <div id="ac-list"></div>
+</div>
 </div>
 </div>
 
@@ -293,12 +414,14 @@ body {
 const API = '/api';
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
+const TAB_NAMES = ['airports','passengers','aircraft'];
 function showTab(name) {
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['airports','passengers'][i] === name));
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', TAB_NAMES[i] === name));
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById('sec-'+name).classList.add('active');
   if (name === 'airports') loadAirports();
-  else loadPassengers();
+  else if (name === 'passengers') loadPassengers();
+  else loadAircraft();
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -515,8 +638,205 @@ async function deletePassenger(name) {
   loadPassengers();
 }
 
+// ── Aircraft ──────────────────────────────────────────────────────────────────
+let aircraftList = [];
+
+const AC_TYPE_LABELS = {
+  fixed_wing: 'Fixed-wing',
+  gyro_side_by_side: 'Gyro — Side-by-side',
+  gyro_tandem: 'Gyro — Tandem',
+};
+
+function onAcTypeChange() {
+  const t = document.getElementById('ac-type').value;
+  document.getElementById('ac-fw-section').style.display    = t === 'fixed_wing'        ? 'block' : 'none';
+  document.getElementById('ac-gyro-section').style.display  = t.startsWith('gyro')      ? 'block' : 'none';
+  document.getElementById('ac-sbs-section').style.display   = t === 'gyro_side_by_side' ? 'block' : 'none';
+  document.getElementById('ac-tandem-section').style.display= t === 'gyro_tandem'       ? 'block' : 'none';
+}
+
+let envCount = 0;
+function addEnvPoint(data = {}) {
+  const id = ++envCount;
+  const div = document.createElement('div');
+  div.className = 'runway-entry';
+  div.id = 'env-'+id;
+  div.innerHTML = `
+    <div class="runway-entry-header">
+      <span class="runway-entry-title">Point ${id}</span>
+      <button class="btn btn-danger btn-sm" onclick="document.getElementById('env-${id}').remove()">Remove</button>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Mass (kg)</label><input class="env-mass" type="number" step="1" placeholder="560" value="${data.mass_kg||''}"/></div>
+      <div class="field"><label>CG (mm)</label><input class="env-cg" type="number" step="1" placeholder="240" value="${data.cg_mm||''}"/></div>
+    </div>`;
+  document.getElementById('ac-env-list').appendChild(div);
+}
+
+async function loadAircraft() {
+  const res = await fetch(`${API}/aircraft`);
+  aircraftList = await res.json();
+  document.getElementById('ac-count').textContent = `${aircraftList.length} aircraft`;
+  const el = document.getElementById('ac-list');
+  if (!aircraftList.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">✈️</div>No aircraft yet</div>';
+    return;
+  }
+  el.innerHTML = aircraftList.map(ac => {
+    const typeLabel = AC_TYPE_LABELS[ac.type] || ac.type;
+    const isGyro = ac.type.startsWith('gyro');
+    const isTandem = ac.type === 'gyro_tandem';
+    const rows = [
+      `<div class="info-row"><span class="info-label">Type</span><span class="info-val">${typeLabel}</span></div>`,
+      `<div class="info-row"><span class="info-label">Empty weight</span><span class="info-val">${ac.empty_weight} kg</span></div>`,
+      ac.fuel_capacity_liters != null ? `<div class="info-row"><span class="info-label">Fuel tank</span><span class="info-val">${ac.fuel_capacity_liters} L</span></div>` : '',
+      `<div class="info-row"><span class="info-label">Cruise fuel</span><span class="info-val">${ac.fuel_cruise_per_hour} L/h · reserve ${ac.fuel_reserve} L</span></div>`,
+      isGyro && ac.mtow != null ? `<div class="info-row"><span class="info-label">MTOW</span><span class="info-val">${ac.mtow} kg</span></div>` : '',
+      isGyro && !isTandem && ac.max_seat_weight != null ? `<div class="info-row"><span class="info-label">Max seat weight</span><span class="info-val">${ac.max_seat_weight} kg each</span></div>` : '',
+      isTandem && ac.max_seat_weight != null ? `<div class="info-row"><span class="info-label">Front seat</span><span class="info-val">min ${ac.min_front_seat_weight||'—'} / max ${ac.max_seat_weight} kg${ac.nose_penalty_factor ? ` (−${ac.nose_penalty_factor}×nose)` : ''}</span></div>` : '',
+      isTandem && ac.max_aft_seat_weight != null ? `<div class="info-row"><span class="info-label">Aft seat max</span><span class="info-val">${ac.max_aft_seat_weight} kg</span></div>` : '',
+      ac.aliases ? `<div class="info-row"><span class="info-label">Bot aliases</span><span class="info-val" style="font-size:12px;color:var(--muted)">${ac.aliases}</span></div>` : '',
+    ].filter(Boolean).join('');
+    return `
+    <div class="card" id="card-ac-${ac.code}">
+      <div class="card-header" onclick="toggleCard('ac-${ac.code}')">
+        <div class="card-title">✈ ${ac.name} <span class="card-badge">${typeLabel}</span></div>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="card-body">
+        ${rows}
+        <div class="card-actions">
+          <button class="btn btn-ghost btn-sm" onclick="editAircraft('${ac.code}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteAircraft('${ac.code}')">Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleAcForm(show, title = 'Add Aircraft') {
+  document.getElementById('ac-add').style.display = show ? 'block' : 'none';
+  document.getElementById('ac-form-title').textContent = title;
+  if (show) {
+    ['ac-code','ac-name','ac-aliases','ac-empty-weight','ac-max-pax',
+     'ac-fuel-cruise','ac-fuel-reserve','ac-fuel-cap','ac-fuel-density',
+     'ac-fuel-start','ac-fuel-climb','ac-empty-lever','ac-fuel-lever',
+     'ac-bag-lever','ac-cg-min','ac-cg-max','ac-mtow','ac-max-bag',
+     'ac-cmin','ac-cmax','ac-max-seat','ac-front-max','ac-front-min',
+     'ac-aft-max','ac-nose-pen']
+      .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    document.getElementById('ac-type').value = 'fixed_wing';
+    document.getElementById('ac-env-list').innerHTML = '';
+    envCount = 0;
+    onAcTypeChange();
+    document.getElementById('ac-code').focus();
+  }
+}
+
+function editAircraft(code) {
+  const ac = aircraftList.find(x => x.code === code);
+  if (!ac) return;
+  toggleAcForm(true, 'Edit Aircraft');
+  const set = (id, val) => { const el = document.getElementById(id); if(el && val != null) el.value = val; };
+  set('ac-code', ac.code);
+  set('ac-name', ac.name);
+  set('ac-aliases', ac.aliases || '');
+  set('ac-empty-weight', ac.empty_weight);
+  set('ac-max-pax', ac.max_passengers);
+  set('ac-fuel-cruise', ac.fuel_cruise_per_hour);
+  set('ac-fuel-reserve', ac.fuel_reserve);
+  set('ac-fuel-cap', ac.fuel_capacity_liters);
+  set('ac-fuel-density', ac.fuel_density);
+  set('ac-fuel-start', ac.fuel_start_roll);
+  set('ac-fuel-climb', ac.fuel_climb);
+  set('ac-empty-lever', ac.empty_lever);
+  set('ac-fuel-lever', ac.fuel_lever);
+  set('ac-bag-lever', ac.baggage_lever);
+  set('ac-cg-min', ac.cg_line_min);
+  set('ac-cg-max', ac.cg_line_max);
+  set('ac-mtow', ac.mtow);
+  set('ac-max-bag', ac.max_baggage_weight ?? ac.max_storage_weight);
+  set('ac-cmin', ac.min_cockpit_weight);
+  set('ac-cmax', ac.max_cockpit_weight);
+  set('ac-max-seat', ac.max_seat_weight);
+  set('ac-front-max', ac.max_seat_weight);
+  set('ac-front-min', ac.min_front_seat_weight);
+  set('ac-aft-max', ac.max_aft_seat_weight);
+  set('ac-nose-pen', ac.nose_penalty_factor);
+  document.getElementById('ac-type').value = ac.type;
+  document.getElementById('ac-env-list').innerHTML = '';
+  envCount = 0;
+  (ac.cg_envelope || []).forEach(p => addEnvPoint(p));
+  onAcTypeChange();
+}
+
+async function saveAircraft() {
+  const code = document.getElementById('ac-code').value.trim().toLowerCase().replace(/\s+/g,'_');
+  const name = document.getElementById('ac-name').value.trim();
+  const type = document.getElementById('ac-type').value;
+  const empty_weight = parseFloat(document.getElementById('ac-empty-weight').value);
+  if (!code || !name || isNaN(empty_weight)) {
+    toast('Code, name and empty weight required', 'err'); return;
+  }
+  const g = id => { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? null : v; };
+  const isGyro = type.startsWith('gyro');
+  const isTandem = type === 'gyro_tandem';
+  const isSbs = type === 'gyro_side_by_side';
+  const body = {
+    code, name, type,
+    aliases: document.getElementById('ac-aliases').value.trim() || null,
+    empty_weight,
+    empty_lever:  g('ac-empty-lever') ?? 0,
+    fuel_start_roll: g('ac-fuel-start') ?? 0,
+    fuel_climb:   g('ac-fuel-climb') ?? 0,
+    fuel_cruise_per_hour: g('ac-fuel-cruise'),
+    fuel_reserve: g('ac-fuel-reserve'),
+    fuel_density: g('ac-fuel-density') ?? 0.72,
+    fuel_lever:   g('ac-fuel-lever') ?? 0,
+    baggage_lever:g('ac-bag-lever') ?? 0,
+    max_passengers: parseInt(document.getElementById('ac-max-pax').value) || 1,
+    fuel_capacity_liters: g('ac-fuel-cap'),
+    cg_line_min:  type === 'fixed_wing' ? g('ac-cg-min') : null,
+    cg_line_max:  type === 'fixed_wing' ? g('ac-cg-max') : null,
+    mtow:         isGyro ? g('ac-mtow') : null,
+    max_seat_weight:      isSbs ? g('ac-max-seat') : (isTandem ? g('ac-front-max') : null),
+    max_aft_seat_weight:  isTandem ? g('ac-aft-max') : null,
+    max_cockpit_weight:   isGyro ? g('ac-cmax') : null,
+    min_cockpit_weight:   isGyro ? g('ac-cmin') : null,
+    max_baggage_weight:   isGyro ? g('ac-max-bag') : null,
+    min_front_seat_weight:isTandem ? g('ac-front-min') : null,
+    nose_penalty_factor:  isTandem ? g('ac-nose-pen') : null,
+    cg_envelope: [],
+  };
+  if (type === 'fixed_wing') {
+    document.querySelectorAll('#ac-env-list .runway-entry').forEach(el => {
+      const mass = parseFloat(el.querySelector('.env-mass').value);
+      const cg   = parseFloat(el.querySelector('.env-cg').value);
+      if (!isNaN(mass) && !isNaN(cg)) body.cg_envelope.push({mass_kg: mass, cg_mm: cg});
+    });
+  }
+  try {
+    const res = await fetch(`${API}/aircraft`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    if (!res.ok) throw new Error(await res.text());
+    toast(`${name} saved`);
+    toggleAcForm(false);
+    loadAircraft();
+  } catch(e) { toast('Save failed: ' + e.message, 'err'); }
+}
+
+async function deleteAircraft(code) {
+  const ac = aircraftList.find(x => x.code === code);
+  if (!confirm(`Delete ${ac?.name || code}?`)) return;
+  await fetch(`${API}/aircraft/${code}`, {method:'DELETE'});
+  toast(`${ac?.name || code} deleted`);
+  loadAircraft();
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
-loadAirports();
+const _hash = location.hash.replace('#','');
+if (_hash === 'sec-passengers') showTab('passengers');
+else if (_hash === 'sec-aircraft') showTab('aircraft');
+else loadAirports();
 </script>
 </body>
 </html>
